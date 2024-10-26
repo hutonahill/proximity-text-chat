@@ -1,6 +1,7 @@
 package com.proxtextchat.network;
 
 import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.WorldChunk;
 import org.jetbrains.annotations.Nullable;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
@@ -10,25 +11,25 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static com.proxtextchat.network.ChunkUtils.isBlockPosInChunk;
-
 public class NetworkGraph {
     private SimpleGraph<NetworkNode, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
 
 
     public NetworkGraph(HashSet<NetworkNode> nodes) throws ChannelMismatch {
 
-        NetworkChannel channel = null;
+        String channel = null;
 
         // loop though all input nodes and add them to the graph
         for (NetworkNode node : nodes){
 
             // make sure all nodes have the same channel.
             if(channel != null){
-                if(node.getChannel() != channel){
+                if(node.getChannel().equals(channel)){
                     throw new ChannelMismatch("Node at" + node.getLocation() + "doesn't match the expected channel");
                 }
                 graph.addVertex();
+
+
             }
 
             // if our channel var is null we fill it
@@ -39,7 +40,7 @@ public class NetworkGraph {
 
         // determine which nodes should be connected to each other
         for (NetworkNode node1 : nodes) {
-            HashSet<Chunk> chunks = node1.getChunks();
+            Set<WorldChunk> chunks = node1.getChunks();
 
             for (NetworkNode node2 : nodes) {
                 // Avoid connecting the node to itself, and avoid creating duplicates
@@ -47,8 +48,8 @@ public class NetworkGraph {
 
 
                     // Check if the second node is within one of node1's chucks forge a connection.
-                    for (Chunk chunk : chunks) {
-                        if (isBlockPosInChunk(node2.getLocation(), chunk)) {
+                    for (WorldChunk chunk : chunks) {
+                        if (node2.getLocation().equals(chunk)) {
                             // If node2 is in a chunk controlled by node1, add an edge
                             graph.addEdge(node1, node2);
 
