@@ -1,12 +1,17 @@
 package com.proxtextchat;
 
-import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.tree.LiteralCommandNode;
+import com.proxtextchat.PlayerChatRageMethodCommand.ChatRangeRegistry;
+import com.proxtextchat.PlayerChatRageMethodCommand.PlayerChatRangeDefinition;
+import com.proxtextchat.PlayerChatRageMethodCommand.PlayerChatRangeMethodCommandSuggestionProvider;
+import com.proxtextchat.PlayerChatRageMethodCommand.StandardPlayerChatRangeMethod;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.gamerule.v1.GameRuleFactory;
 import net.fabricmc.fabric.api.gamerule.v1.GameRuleRegistry;
 import net.minecraft.command.argument.IdentifierArgumentType;
+import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
@@ -24,29 +29,50 @@ public class ProximityTextChat implements ModInitializer {
             GameRuleFactory.createBooleanRule(false)
     );
 
-    public int command(CommandContext<ServerCommandSource> context) {
-        ServerCommandSource sorce = context.getSource();
-
-        boolean hasLevel = sorce.hasPermissionLevel(4);
-        return 0; // Your logic here
-    }
 
 
-    public static final String MOD_ID = "ProximityTextChatTools";
 
-    private static final String MethodArgumentName = "Method";
+    public static final String MOD_ID = "proximity_text_chat_tools";
+
+    public static final String ChatMethodArgumentName = "Method";
+
+    private static final PlayerChatRangeDefinition ChatMethod = StandardPlayerChatRangeMethod.getInstance();
 
     @Override
     public void onInitialize() {
-        CommandRegistrationCallback.EVENT.register(((dispatcher, registryAccess, environment) -> dispatcher
-                .register(literal("PlayerRangeMethod")
-                    .requires(source -> source.hasPermissionLevel(4))
-                        .then(argument(MethodArgumentName, IdentifierArgumentType.identifier()))
-                    .executes(context -> {
-                        Identifier methodName = IdentifierArgumentType.getIdentifier(context, MethodArgumentName);
-                        context.getSource().sendFeedback(() -> Text.literal("called /PlayerRangeMethod with argument " + methodName), false);
 
-                        return 1;
-                }))));
+        ChatRangeRegistry.registerMethod(ChatMethod.getID(), ChatMethod);
+
+        ChatRangeRegistry.selectKey(ChatMethod.getID());
+
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+            LiteralCommandNode<ServerCommandSource> PlayerChatRangeMethodNode = CommandManager
+                    .literal("PlayerChatRangeMethod")
+                    .requires(source -> source.hasPermissionLevel(4))
+                    .then(argument(ChatMethodArgumentName, IdentifierArgumentType.identifier())
+                            .suggests(new PlayerChatRangeMethodCommandSuggestionProvider())
+                            .executes(this::PlayerRangeMethodCommand)
+                    )
+                    .build();
+
+            dispatcher.getRoot().addChild(PlayerChatRangeMethodNode);
+        });
+    }
+
+    private int PlayerRangeMethodCommand(CommandContext<ServerCommandSource> context) {
+        Identifier methodName = IdentifierArgumentType.getIdentifier(context, ChatMethodArgumentName);
+
+        boolean exists =  ChatRangeRegistry.getKeys().contains(methodName);
+
+        if (exists == true){
+            ChatRangeRegistry.selectKey(methodName);
+            context.getSource().sendFeedback(() -> Text.literal("PlayerChatRangeMethod has been defined as " + methodName + "."), true);
+        }
+        else{
+            context.getSource().sendFeedback(() -> Text.literal("Could not find PlayerChatRangeMethod " + methodName + "."), true);
+        }
+
+
+        return 1;
     }
 }

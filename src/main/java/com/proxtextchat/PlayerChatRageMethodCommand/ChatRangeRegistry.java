@@ -1,7 +1,10 @@
 package com.proxtextchat.PlayerChatRageMethodCommand;
 
+import net.fabricmc.fabric.api.gamerule.v1.GameRuleFactory;
+import net.fabricmc.fabric.api.gamerule.v1.GameRuleRegistry;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.Identifier;
+import net.minecraft.world.GameRules;
 import net.minecraft.world.chunk.Chunk;
 
 import java.util.*;
@@ -10,8 +13,9 @@ public class ChatRangeRegistry {
 
     private ChatRangeRegistry() {}
 
-    public static final ChatRangeRegistry INSTANCE = new ChatRangeRegistry();
-
+    public static final GameRules.Key<GameRules.IntRule> PLAYER_CHAT_RANGE =
+            GameRuleRegistry.register("playerChatRange", GameRules.Category.CHAT,
+                    GameRuleFactory.createIntRule(5));
 
 
     private static final Map<Identifier, PlayerChatRangeDefinition> registry = new HashMap<>();
@@ -27,6 +31,7 @@ public class ChatRangeRegistry {
 
         registry.put(key, method);
     }
+
 
     public static void selectKey(Identifier key){
         CurrentMethod = registry.get(key);

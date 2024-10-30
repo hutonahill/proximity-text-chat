@@ -1,13 +1,20 @@
 package com.proxtextchat.network;
 
-import net.fabricmc.fabric.api.util.NbtType;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtList;
-import net.minecraft.nbt.NbtLongArray;
 import net.minecraft.nbt.NbtString;
-import com.proxtextchat.util.Tuple;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.ChunkPos;
+import net.minecraft.world.World;
+import net.minecraft.world.chunk.WorldChunk;
 
-import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 public class ChunkNbtArray{
     private final long[] location;
@@ -17,9 +24,17 @@ public class ChunkNbtArray{
     private final String DimensionKey = "Dimension";
 
     // Constructor to initialize the arrays
-    public ChunkNbtArray(int size) {
-        location = new long[size];
-        dimension = new String[size];
+    public ChunkNbtArray(Set<WorldChunk> chunks){
+        location = new long[chunks.size()];
+        dimension = new String[chunks.size()];
+
+        int index = 0;
+        for (WorldChunk chunk : chunks){
+            location[index] = chunk.getPos().toLong();
+            dimension[index] = chunk.getWorld().getRegistryKey().getValue().toString();
+
+            index++;
+        }
     }
 
     public ChunkNbtArray(NbtCompound nbt) {
@@ -37,41 +52,10 @@ public class ChunkNbtArray{
     }
 
     // Set a tuple at the given index
-    public void set(int index, long loc, String dim) {
 
-
-        if (index < 0 || index >= location.length) {
-            throw new IndexOutOfBoundsException("Index out of bounds: " + index);
-        }
-        location[index] = loc;
-        dimension[index] = dim;
-    }
-
-    // Get the tuple (long, String) at a specific index
-    public Tuple<Long, String> get(int index) {
-        if (index < 0 || index >= location.length) {
-            throw new IndexOutOfBoundsException("Index out of bounds: " + index);
-        }
-        return new Tuple<>(location[index], dimension[index]);
-    }
-
-    // Allow access with bracket-like syntax via a get method
-    public Tuple<Long, String> getAt(int index) {
-        return get(index);
-    }
-
-    // Return the long array (locations)
-    public long[] getLocationArray() {
-        return location;
-    }
-
-    // Return the String array (dimensions)
-    public String[] getDimensionArray() {
-        return dimension;
-    }
 
     // Method to add this array data to an NBT compound and return the modified NBT compound
-    public NbtCompound toNBT(NbtCompound nbt) {
+    public void toNBT(NbtCompound nbt) {
 
         NbtList StringArray = new NbtList();
 
@@ -82,23 +66,34 @@ public class ChunkNbtArray{
         nbt.put(DimensionKey, StringArray);
         nbt.putLongArray(LocationKey, location);
 
-        return nbt;
     }
 
-    // Allow iteration over the ChunkNbtArray with a for-each loop
-    public Iterable<Tuple<Long, String>> iterable() {
-        return () -> new java.util.Iterator<>() {
-            private int index = 0;
+    public Set<WorldChunk> toSet(MinecraftServer server){
+        Set<WorldChunk> output = new HashSet<>();
 
-            @Override
-            public boolean hasNext() {
-                return index < location.length;
-            }
+        int index = 0;
+        while (index < location.length){
+            Identifier id = Identifier.of(dimension[index]);
 
-            @Override
-            public Tuple<Long, String> next() {
-                return getAt(index++);
+            RegistryKey<World> key = RegistryKey.of(RegistryKeys.WORLD, id);
+
+            ChunkPos pos = new ChunkPos(location[index]);
+
+            World world = server.getWorld(key);
+
+            if (world != null) {
+                output.add(world.getChunk(pos.x, pos.z));
             }
-        };
+            else{
+
+                String msg = "Unable to find world " + key.toString() + "When parsing nodes";
+                for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()){
+                    player.sendMessage(Text.literal(msg));
+                }
+            }
+        }
+
+        return output;
     }
+
 }

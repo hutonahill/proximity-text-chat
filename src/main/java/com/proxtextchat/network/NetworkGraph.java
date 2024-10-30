@@ -1,23 +1,24 @@
 package com.proxtextchat.network;
 
-import net.minecraft.world.chunk.Chunk;
+import net.minecraft.util.Identifier;
 import net.minecraft.world.chunk.WorldChunk;
-import org.jetbrains.annotations.Nullable;
+import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 import org.jgrapht.graph.DefaultEdge;
-import org.jgrapht.graph.SimpleGraph;
+import org.jgrapht.graph.DirectedMultigraph;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class NetworkGraph {
-    private SimpleGraph<NetworkNode, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
+    private final DirectedMultigraph<NetworkNode, DefaultEdge> graph = new DirectedMultigraph<>(DefaultEdge.class);
 
 
     public NetworkGraph(HashSet<NetworkNode> nodes) throws ChannelMismatch {
 
-        String channel = null;
+        Identifier channel = null;
+
+        // a temporary registry of nodes that lets us avoid looping though the
+        // node set a second time.
+        HashMap<WorldChunk, HashSet<NetworkNode>> tempNodeRegistry = new HashMap<>();
 
         // loop though all input nodes and add them to the graph
         for (NetworkNode node : nodes){
@@ -27,34 +28,39 @@ public class NetworkGraph {
                 if(node.getChannel().equals(channel)){
                     throw new ChannelMismatch("Node at" + node.getLocation() + "doesn't match the expected channel");
                 }
-                graph.addVertex();
-
-
             }
 
             // if our channel var is null we fill it
             else{
                 channel = node.getChannel();
             }
+
+            // if we haven't thrown an exception, add the node to the graph.
+            graph.addVertex();
+
+            // Remember where the node is
+            if(tempNodeRegistry.containsKey(node.getLocation())){
+                tempNodeRegistry.put(node.getLocation(), new HashSet<>());
+            }
+            tempNodeRegistry.get(node.getLocation()).add(node);
         }
 
         // determine which nodes should be connected to each other
         for (NetworkNode node1 : nodes) {
-            Set<WorldChunk> chunks = node1.getChunks();
+            Set<WorldChunk> chunks = node1.getRange();
 
-            for (NetworkNode node2 : nodes) {
-                // Avoid connecting the node to itself, and avoid creating duplicates
-                if (node1 != node2 && graph.containsEdge(node1, node2)) {
+            // loop though all the chunks in Node1
+            for (WorldChunk chunk : chunks) {
 
+                // check if there are any nodes in this chunk
+                if(tempNodeRegistry.containsKey(chunk)){
 
-                    // Check if the second node is within one of node1's chucks forge a connection.
-                    for (WorldChunk chunk : chunks) {
-                        if (node2.getLocation().equals(chunk)) {
+                    // if there is, loop though all nodes in that chunk
+                    for (NetworkNode node2 : tempNodeRegistry.get(chunk)){
+                        // dont connect to ourself
+                        if (node2 != node1) {
                             // If node2 is in a chunk controlled by node1, add an edge
                             graph.addEdge(node1, node2);
-
-                            // No need to check further chunks if an edge is added.
-                            break;
                         }
                     }
                 }
@@ -62,76 +68,45 @@ public class NetworkGraph {
         }
     }
 
-    public List<HashSet<NetworkNode>> ExtractSubnets(){
-        List<HashSet<NetworkNode>> output = new ArrayList<HashSet<NetworkNode>>();
+    private final HashMap<NetworkNode, HashMap<NetworkNode, List<NetworkNode>>> ShortestPathRegistry = new HashMap<>();
 
-        while (graph.vertexSet().isEmpty()){
+    public List<NetworkNode> DirectMessage(NetworkNode origin, NetworkNode destination){
+        PopulateShortestPathRegistry();
 
-            output.add(ExtractSubnet(GetAnyNode(), new HashSet<NetworkNode>()));
+        if (ShortestPathRegistry.containsKey(origin)) {
+            return ShortestPathRegistry.get(origin).get(destination);
         }
-
-
-        return output;
+        return null;
     }
 
-    /**
-     * Extracts a subnet of connected NetworkNodes starting from the specified node.
-     *
-     * This method performs a depth-first search to find all nodes that are
-     * directly or indirectly connected to the given node. It adds these nodes
-     * to the provided output HashSet. If the output HashSet is null, a new
-     * HashSet will be created. After processing, the original node is removed
-     * from the graph.
-     *
-     * @param node The starting NetworkNode from which to extract the subnet.
-     *             This node will also be included in the output.
-     * @param output an empty HashSet&lt;NetworkNode&gt; that accumulates the extracted NetworkNodes.
-     *             If this parameter is null, a new HashSet will be created.
-     * @return A HashSet containing all NetworkNodes in the extracted subnet.
-     */
-    private HashSet<NetworkNode> ExtractSubnet(NetworkNode node, HashSet<NetworkNode> output){
+    public HashMap<NetworkNode, List<NetworkNode>> Broadcast(NetworkNode origin){
+        PopulateShortestPathRegistry();
 
-        if(output == null){
-            output = new HashSet<NetworkNode>();
-        }
-
-        output.add(node);
-        // get the node
-        Set<DefaultEdge> edges = graph.edgesOf(node);
-
-        for (DefaultEdge edge : edges){
-
-
-            NetworkNode neighbor;
-
-            if(graph.getEdgeSource(edge).equals(node)){
-                neighbor = graph.getEdgeTarget(edge);
-            }
-            else{
-                neighbor = graph.getEdgeSource(edge);
-            }
-
-
-            if(neighbor != null && !output.contains(neighbor)){
-                output.addAll(ExtractSubnet(neighbor, output));
-            }
-        }
-
-        graph.removeVertex(node);
-
-        return output;
+        return ShortestPathRegistry.get(origin);
     }
 
-    private @Nullable NetworkNode GetAnyNode(){
-        Set<NetworkNode> vertices = graph.vertexSet();
+    private void PopulateShortestPathRegistry(){
+        if (ShortestPathRegistry.isEmpty()){
 
-        if (!vertices.isEmpty()) {
-            // Retrieve any node, for example, the first one from the set
-            return vertices.iterator().next(); // Get an arbitrary node
-        } else {
-            return null; // or handle the case where the graph is empty
+
+            DijkstraShortestPath<NetworkNode, DefaultEdge> dijkstra =
+                    new DijkstraShortestPath<>(graph);
+
+            // for each node
+            for (NetworkNode source : graph.vertexSet()) {
+                HashMap<NetworkNode, List<NetworkNode>> pathsFromSource = new HashMap<>();
+
+                // for each node that is not the origin
+                for (NetworkNode destination : graph.vertexSet()) {
+                    if (!source.equals(destination)) {
+                        // get the path between origin and destination
+                        List<NetworkNode> path = dijkstra.getPath(source, destination).getVertexList();
+                        pathsFromSource.put(destination, path);
+                    }
+                }
+                ShortestPathRegistry.put(source, pathsFromSource);
+            }
         }
     }
-
 }
 

@@ -2,21 +2,21 @@
 	"schemaVersion": 1,
 	"id": "modid",
 	"version": "${version}",
-	"name": "Example mod",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"name": "Proximity Text Chat Tools",
+	"description": "Replaces Minecraft's chat with a proximity system. Also a networking api under the hood for other mods to use.",
 	"authors": [
-		"Me!"
+		"hutonahill"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://github.com/hutonahill",
+		"sources": "https://github.com/hutonahill/proximity-text-chat"
 	},
 	"license": "CC0-1.0",
 	"icon": "assets/modid/icon.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-
+			"com.proxtextchat.ProximityTextChat"
 		],
 		"client": [
 

@@ -1,37 +1,33 @@
 package com.proxtextchat.network;
 
-import net.minecraft.registry.RegistryKey;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
-import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.WorldChunk;
 
 import java.util.Set;
 
 public class NetworkNode {
-    private WorldChunk Location;
+    private final WorldChunk Location;
 
-    private String Channel;
+    private final Identifier Channel;
 
-    private Set<WorldChunk> Chunks;
+    private final Set<WorldChunk> Range;
 
-    public NetworkNode(String channel, WorldChunk location, Set<WorldChunk> chunks, RegistryKey<World> dimension){
+    public NetworkNode(Identifier channel, WorldChunk location, Set<WorldChunk> chunks){
         Channel = channel;
         Location = location;
-        Chunks = chunks;
+        Range = chunks;
     }
 
     public WorldChunk getLocation() {
         return Location;
     }
 
-    public String getChannel() {
+    public Identifier getChannel() {
         return Channel;
     }
 
-    public Set<WorldChunk> getChunks() {
-        return Chunks;
+    public Set<WorldChunk> getRange() {
+        return Range;
     }
 
 }

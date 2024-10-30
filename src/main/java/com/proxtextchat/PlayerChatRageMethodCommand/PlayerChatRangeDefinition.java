@@ -1,10 +1,17 @@
 package com.proxtextchat.PlayerChatRageMethodCommand;
 
 import net.minecraft.entity.Entity;
+import net.minecraft.util.Identifier;
 import net.minecraft.world.chunk.Chunk;
 
 import java.util.Set;
 
 public interface PlayerChatRangeDefinition {
     Set<Chunk> getChunks(Entity sender, int range);
+
+    static PlayerChatRangeDefinition getInstance() {
+        throw new UnsupportedOperationException("Implementations must override this method to return a singleton instance.");
+    }
+
+    Identifier getID();
 }
