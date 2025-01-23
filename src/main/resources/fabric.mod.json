@@ -1,36 +1,39 @@
 {
 	"schemaVersion": 1,
-	"id": "modid",
+	"id": "proxchatbasemod",
 	"version": "${version}",
-	"name": "Proximity Text Chat Tools",
-	"description": "Replaces Minecraft's chat with a proximity system. Also a networking api under the hood for other mods to use.",
+	"name": "ProxChatBaseMod",
+	"description": "This is an example description! Tell everyone what your mod is about!",
 	"authors": [
-		"hutonahill"
+		"Me!"
 	],
 	"contact": {
-		"homepage": "https://github.com/hutonahill",
-		"sources": "https://github.com/hutonahill/proximity-text-chat"
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
 	},
 	"license": "CC0-1.0",
-	"icon": "assets/modid/icon.png",
+	"icon": "assets/proxchatbasemod/icon.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"com.proxtextchat.ProximityTextChat"
+			"com.proxtextchat.ProxChatBaseMod"
 		],
 		"client": [
-
+			"com.proxtextchat.ProxChatBaseModClient"
+		],
+		"fabric-datagen": [
+			"com.proxtextchat.ProxChatBaseModDataGenerator"
 		]
 	},
 	"mixins": [
-		"modid.mixins.json",
+		"proxchatbasemod.mixins.json",
 		{
-			"config": "modid.client.mixins.json",
+			"config": "proxchatbasemod.client.mixins.json",
 			"environment": "client"
 		}
 	],
 	"depends": {
-		"fabricloader": ">=0.16.2",
+		"fabricloader": ">=0.16.10",
 		"minecraft": "~1.21.1",
 		"java": ">=21",
 		"fabric-api": "*"

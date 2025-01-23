@@ -1,5 +1,5 @@
 plugins {
-	id 'fabric-loom' version '1.7-SNAPSHOT'
+	id 'fabric-loom' version '1.9-SNAPSHOT'
 	id 'maven-publish'
 }
 
@@ -22,12 +22,18 @@ loom {
 	splitEnvironmentSourceSets()
 
 	mods {
-		"modid" {
+		"proxchatbasemod" {
 			sourceSet sourceSets.main
 			sourceSet sourceSets.client
 		}
 	}
 
+}
+
+fabricApi {
+	configureDataGeneration {
+		client = true
+	}
 }
 
 dependencies {
@@ -38,8 +44,6 @@ dependencies {
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-
-	implementation 'org.jgrapht:jgrapht-core:1.5.2'
 	
 }
 
