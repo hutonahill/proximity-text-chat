@@ -1,18 +1,58 @@
 package com.proxtextchat.network;
 
+import com.proxtextchat.Message;
+import it.unimi.dsi.fastutil.ints.IntImmutableList;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.chunk.WorldChunk;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 
 public class NetworkNode {
+
+    private static final List<Integer> idCounter = new ArrayList<>();
+    private Integer ID;
+
+    private static Integer generateId(){
+
+        if (idCounter.isEmpty()){
+            idCounter.add(1);
+            return 1;
+        }
+
+        while(true){
+            Integer lastNum = idCounter.getLast();
+
+            if(!idCounter.contains(lastNum++)){
+                return lastNum;
+            }
+        }
+    }
     private final WorldChunk Location;
 
     private final Identifier Channel;
 
     private final Set<WorldChunk> Range;
 
+
     public NetworkNode(Identifier channel, WorldChunk location, Set<WorldChunk> chunks){
+        Channel = channel;
+        Location = location;
+        Range = chunks;
+
+        ID = generateId();
+    }
+
+    public NetworkNode(Identifier channel, WorldChunk location, Set<WorldChunk> chunks, Integer id){
+        if (idCounter.contains(id)){
+            throw new IllegalArgumentException("id `" + id + "` has already been assigned");
+        }
+
+        ID = id;
+        idCounter.add(id);
+
         Channel = channel;
         Location = location;
         Range = chunks;
@@ -30,6 +70,7 @@ public class NetworkNode {
         return Range;
     }
 
+    public Integer getID(){ return ID;}
 }
 
 

@@ -8,6 +8,7 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.WorldChunk;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
@@ -24,7 +25,7 @@ public class NetworkNodeNBT {
     public Identifier Dimension;
     private static final String DimensionKey = "Dimension";
 
-    public NetworkNodeNBT(NetworkNode node){
+    public NetworkNodeNBT(@NotNull NetworkNode node){
         Location = node.getLocation().getPos().toLong();
 
         Dimension = node.getLocation().getWorld().getRegistryKey().getValue();
@@ -37,7 +38,7 @@ public class NetworkNodeNBT {
 
     }
 
-    public NetworkNodeNBT(NbtCompound nbt){
+    public NetworkNodeNBT(@NotNull NbtCompound nbt){
         Chunks = new ChunkNbtArray(nbt);
         Location = nbt.getLong(LocationKey);
         Channel = Identifier.of(nbt.getString(ChannelKey)) ;
@@ -55,7 +56,7 @@ public class NetworkNodeNBT {
 
     }
 
-    public NetworkNode toNode(MinecraftServer server){
+    public NetworkNode toNode(@NotNull MinecraftServer server){
         Set<WorldChunk> tempChunks = Chunks.toSet(server);
 
         // parse the node position

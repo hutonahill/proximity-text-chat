@@ -2,6 +2,7 @@ package com.proxtextchat.network;
 
 import net.minecraft.util.Identifier;
 import net.minecraft.world.chunk.WorldChunk;
+import org.jetbrains.annotations.NotNull;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DirectedMultigraph;
@@ -71,7 +72,7 @@ public class NetworkGraph {
         }
     }
 
-    public void AddNode(NetworkNode node){
+    public void AddNode(@NotNull NetworkNode node){
 
         // make sure the node is not already in the graph.
         if(Graph.containsVertex(node)){
@@ -112,19 +113,33 @@ public class NetworkGraph {
         ShortestPathRegistry = new HashMap<>();
     }
 
-    private HashMap<NetworkNode, HashMap<NetworkNode, List<NetworkNode>>> ShortestPathRegistry = new HashMap<>();
-
-    public List<NetworkNode> DirectMessage(NetworkNode origin, NetworkNode destination){
-        PopulateShortestPathRegistry();
-
-        if (ShortestPathRegistry.containsKey(origin)) {
-            return ShortestPathRegistry.get(origin).get(destination);
+    public void RemoveNode(@NotNull NetworkNode node){
+        if(!Graph.containsVertex(node)){
+            return;
         }
-        return null;
+
+        Graph.removeVertex(node);
+
+        ShortestPathRegistry = new HashMap<>();
+
     }
 
-    public HashMap<NetworkNode, List<NetworkNode>> Broadcast(NetworkNode origin){
+    private HashMap<NetworkNode, HashMap<NetworkNode, List<NetworkNode>>> ShortestPathRegistry = new HashMap<>();
+
+    public List<NetworkNode> DirectMessage(@NotNull NetworkNode origin, @NotNull NetworkNode destination){
         PopulateShortestPathRegistry();
+
+        if (!ShortestPathRegistry.containsKey(origin)) {
+            return null;
+        }
+
+        return ShortestPathRegistry.get(origin).get(destination);
+    }
+
+    public HashMap<NetworkNode, List<NetworkNode>> BroadcastPaths(@NotNull NetworkNode origin){
+        if (!ShortestPathRegistry.containsKey(origin)){
+            return null;
+        }
 
         return ShortestPathRegistry.get(origin);
     }
@@ -140,17 +155,66 @@ public class NetworkGraph {
             for (NetworkNode source : Graph.vertexSet()) {
                 HashMap<NetworkNode, List<NetworkNode>> pathsFromSource = new HashMap<>();
 
-                // for each node that is not the origin
-                for (NetworkNode destination : Graph.vertexSet()) {
-                    if (!source.equals(destination)) {
-                        // get the path between origin and destination
-                        List<NetworkNode> path = dijkstra.getPath(source, destination).getVertexList();
-                        pathsFromSource.put(destination, path);
-                    }
-                }
-                ShortestPathRegistry.put(source, pathsFromSource);
+                ShortestPathRegistry.put(source, computeShortestPaths(source));
             }
         }
+    }
+
+    private @NotNull HashMap<NetworkNode, List<NetworkNode>> computeShortestPaths(@NotNull NetworkNode source) {
+        if (source.getChannel() != Channel){
+            return new HashMap<>();
+        }
+        else if (Graph.containsVertex(source)){
+            return new HashMap<>();
+        }
+
+        // Map to store the shortest path from the source to each node
+        HashMap<NetworkNode, List<NetworkNode>> shortestPaths = new HashMap<>();
+
+        // Map to store the minimum distance from the source to each node
+        HashMap<NetworkNode, Double> distances = new HashMap<>();
+
+        // Priority queue to process nodes in order of distance
+        PriorityQueue<NetworkNode> priorityQueue = new PriorityQueue<>(Comparator.comparingDouble(distances::get));
+
+        // Initialize distances to infinity and paths to empty
+        for (NetworkNode node : Graph.vertexSet()) {
+            distances.put(node, Double.POSITIVE_INFINITY);
+            shortestPaths.put(node, new ArrayList<>());
+        }
+
+        // Set the distance to the source as 0
+        distances.put(source, 0.0);
+        priorityQueue.add(source);
+        shortestPaths.get(source).add(source); // Source's path to itself is just itself
+
+        // Dijkstra's algorithm, re implemented to save some compute time
+        while (!priorityQueue.isEmpty()) {
+            NetworkNode current = priorityQueue.poll();
+
+            for (DefaultEdge edge : Graph.outgoingEdgesOf(current)) {
+                NetworkNode neighbor = Graph.getEdgeTarget(edge);
+                if (neighbor.equals(current)) {
+                    neighbor = Graph.getEdgeSource(edge);
+                }
+
+                double weight = 1.0; // Adjust if your edges have weights
+                double newDistance = distances.get(current) + weight;
+
+                if (distances.containsKey(neighbor) && newDistance < distances.get(neighbor)) {
+                    distances.put(neighbor, newDistance);
+
+                    // Update the path to the neighbor
+                    List<NetworkNode> path = new ArrayList<>(shortestPaths.get(current));
+                    path.add(neighbor);
+                    shortestPaths.put(neighbor, path);
+
+                    priorityQueue.add(neighbor);
+                }
+            }
+        }
+
+        return shortestPaths;
     }
 }
 
