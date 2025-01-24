@@ -5,7 +5,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import com.proxtextchat.ProximityTextChat;
+import com.proxtextchat.ProxChatBaseMod;
 import net.minecraft.command.CommandSource;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.util.Identifier;
@@ -16,7 +16,7 @@ import java.util.concurrent.CompletableFuture;
 public class PlayerChatRangeMethodCommandSuggestionProvider implements SuggestionProvider<ServerCommandSource> {
     @Override
     public CompletableFuture<Suggestions> getSuggestions(CommandContext<ServerCommandSource> context, SuggestionsBuilder builder){
-        Identifier chatMethodId = context.getArgument(ProximityTextChat.ChatMethodArgumentName, Identifier.class);
+        Identifier chatMethodId = context.getArgument(ProxChatBaseMod.ChatMethodArgumentName, Identifier.class);
 
         Set<Identifier> possible = ChatRangeRegistry.getKeys();
 

@@ -124,9 +124,9 @@ public class NetworkGraph {
 
     }
 
-    private HashMap<NetworkNode, HashMap<NetworkNode, List<NetworkNode>>> ShortestPathRegistry = new HashMap<>();
+    private HashMap<NetworkNode, HashMap<NetworkNode, Set<NetworkNode>>> ShortestPathRegistry = new HashMap<>();
 
-    public List<NetworkNode> DirectMessage(@NotNull NetworkNode origin, @NotNull NetworkNode destination){
+    public Set<NetworkNode> DirectMessage(@NotNull NetworkNode origin, @NotNull NetworkNode destination){
         PopulateShortestPathRegistry();
 
         if (!ShortestPathRegistry.containsKey(origin)) {
@@ -136,7 +136,7 @@ public class NetworkGraph {
         return ShortestPathRegistry.get(origin).get(destination);
     }
 
-    public HashMap<NetworkNode, List<NetworkNode>> BroadcastPaths(@NotNull NetworkNode origin){
+    public HashMap<NetworkNode, Set<NetworkNode>> BroadcastPaths(@NotNull NetworkNode origin){
         if (!ShortestPathRegistry.containsKey(origin)){
             return null;
         }
@@ -160,7 +160,7 @@ public class NetworkGraph {
         }
     }
 
-    private @NotNull HashMap<NetworkNode, List<NetworkNode>> computeShortestPaths(@NotNull NetworkNode source) {
+    private @NotNull HashMap<NetworkNode, Set<NetworkNode>> computeShortestPaths(@NotNull NetworkNode source) {
         if (source.getChannel() != Channel){
             return new HashMap<>();
         }
@@ -169,7 +169,7 @@ public class NetworkGraph {
         }
 
         // Map to store the shortest path from the source to each node
-        HashMap<NetworkNode, List<NetworkNode>> shortestPaths = new HashMap<>();
+        HashMap<NetworkNode, Set<NetworkNode>> shortestPaths = new HashMap<>();
 
         // Map to store the minimum distance from the source to each node
         HashMap<NetworkNode, Double> distances = new HashMap<>();
@@ -180,7 +180,7 @@ public class NetworkGraph {
         // Initialize distances to infinity and paths to empty
         for (NetworkNode node : Graph.vertexSet()) {
             distances.put(node, Double.POSITIVE_INFINITY);
-            shortestPaths.put(node, new ArrayList<>());
+            shortestPaths.put(node, new HashSet<>());
         }
 
         // Set the distance to the source as 0
@@ -205,7 +205,7 @@ public class NetworkGraph {
                     distances.put(neighbor, newDistance);
 
                     // Update the path to the neighbor
-                    List<NetworkNode> path = new ArrayList<>(shortestPaths.get(current));
+                    Set<NetworkNode> path = new HashSet<>(shortestPaths.get(current));
                     path.add(neighbor);
                     shortestPaths.put(neighbor, path);
 

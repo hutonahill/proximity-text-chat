@@ -1,6 +1,6 @@
 package com.proxtextchat.PlayerChatRageMethodCommand;
 
-import com.proxtextchat.ProximityTextChat;
+import com.proxtextchat.ProxChatBaseMod;
 import net.minecraft.entity.Entity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
@@ -38,6 +38,6 @@ public class StandardPlayerChatRangeMethod implements PlayerChatRangeDefinition{
 
     @Override
     public Identifier getID() {
-        return Identifier.of(ProximityTextChat.MOD_ID, "standard_chat_range_method");
+        return Identifier.of(ProxChatBaseMod.MOD_ID, "standard_chat_range_method");
     }
 }
