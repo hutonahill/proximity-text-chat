@@ -147,7 +147,6 @@ public class NetworkGraph {
     private void PopulateShortestPathRegistry(){
         if (ShortestPathRegistry.isEmpty()){
 
-
             DijkstraShortestPath<NetworkNode, DefaultEdge> dijkstra =
                     new DijkstraShortestPath<>(Graph);
 
