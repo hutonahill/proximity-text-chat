@@ -23,6 +23,25 @@ I've written an outline of how I would use the features of this mod
 This mod is not a full implementation of the linked design document, but the foundation for it. 
 
 
+## ToDo List:
+
+- Implement threading for populating the shortest path registries.
+- revisit storage and make sure we are storing channels properly
+- Nodes should have a set of receiving chunks instead of a single one (hutonahill)
+- Item Tags:
+  - sendInHand
+  - sendInHotbar
+  - sendInCurios
+  - sendInInventory
+  - receiveInHand
+  - receiveInHotbar
+  - receiveInCurios
+  - receiveInInventory
+  - channel
+- Add ChatRangeMethod gamerule to the Mod page
+- Add playerRange gamerule
+- Add playerRange gamerule to the Mod page.
+
 
 ## License
 

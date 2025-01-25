@@ -155,6 +155,8 @@ public class Channel {
         return ShortestPathRegistry.get(origin);
     }
 
+
+    //TODO: figure threading and implement here.
     private void PopulateShortestPathRegistry(){
         if (ShortestPathRegistry.isEmpty()){
 
