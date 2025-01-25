@@ -19,7 +19,7 @@ public class Message {
 
     private final Instant SendTime;
 
-    Message(Entity trueSender, String alias, Text message){
+    public Message(Entity trueSender, String alias, Text message){
         TrueSender = trueSender;
         Alias = alias;
         Message = message;
@@ -47,6 +47,8 @@ public class Message {
     public Entity getTrueSender() {
         return TrueSender;
     }
+
+    public String getAlias(){return Alias;}
 
     public List<NetworkNode> getTrace() {
         return Trace;

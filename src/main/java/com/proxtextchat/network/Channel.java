@@ -113,6 +113,8 @@ public class Channel {
 
         // finally our ShortedPathRegistry is now out of date and will need to be recalculated.
         ShortestPathRegistry = new HashMap<>();
+
+        PopulateShortestPathRegistry();
     }
 
     public void RemoveNode(@NotNull NetworkNode node){
@@ -124,11 +126,17 @@ public class Channel {
 
         ShortestPathRegistry = new HashMap<>();
 
+        PopulateShortestPathRegistry();
     }
 
-    private HashMap<NetworkNode, HashMap<NetworkNode, HashSet<NetworkNode>>> ShortestPathRegistry = new HashMap<>();
+    public boolean hasNode(@NotNull NetworkNode node){
+        return Graph.containsVertex(node);
+    }
 
-    public HashSet<NetworkNode> DirectMessage(@NotNull NetworkNode origin, @NotNull NetworkNode destination){
+    private HashMap<NetworkNode /*origin*/, HashMap<NetworkNode/*destination*/, ArrayList<NetworkNode>/*path*/>>
+            ShortestPathRegistry = new HashMap<>();
+
+    public ArrayList<NetworkNode> DirectMessage(@NotNull NetworkNode origin, @NotNull NetworkNode destination){
         PopulateShortestPathRegistry();
 
         if (!ShortestPathRegistry.containsKey(origin)) {
@@ -138,7 +146,8 @@ public class Channel {
         return ShortestPathRegistry.get(origin).get(destination);
     }
 
-    public HashMap<NetworkNode, HashSet<NetworkNode>> BroadcastPaths(@NotNull NetworkNode origin){
+    public HashMap<NetworkNode, ArrayList<NetworkNode>> BroadcastPaths(@NotNull NetworkNode origin){
+        PopulateShortestPathRegistry();
         if (!ShortestPathRegistry.containsKey(origin)){
             return null;
         }
@@ -158,7 +167,7 @@ public class Channel {
         }
     }
 
-    private @NotNull HashMap<NetworkNode, HashSet<NetworkNode>> computeShortestPaths(@NotNull NetworkNode source) {
+    private @NotNull HashMap<NetworkNode, ArrayList<NetworkNode>> computeShortestPaths(@NotNull NetworkNode source) {
         if (source.getChannel() != ID){
             return new HashMap<>();
         }
@@ -167,7 +176,7 @@ public class Channel {
         }
 
         // Map to store the shortest path from the source to each node
-        HashMap<NetworkNode, HashSet<NetworkNode>> shortestPaths = new HashMap<>();
+        HashMap<NetworkNode, ArrayList<NetworkNode>> shortestPaths = new HashMap<>();
 
         // Map to store the minimum distance from the source to each node
         HashMap<NetworkNode, Double> distances = new HashMap<>();
@@ -178,7 +187,7 @@ public class Channel {
         // Initialize distances to infinity and paths to empty
         for (NetworkNode node : Graph.vertexSet()) {
             distances.put(node, Double.POSITIVE_INFINITY);
-            shortestPaths.put(node, new HashSet<>());
+            shortestPaths.put(node, new ArrayList<>());
         }
 
         // Set the distance to the source as 0
@@ -203,7 +212,7 @@ public class Channel {
                     distances.put(neighbor, newDistance);
 
                     // Update the path to the neighbor
-                    HashSet<NetworkNode> path = new HashSet<>(shortestPaths.get(current));
+                    ArrayList<NetworkNode> path = new ArrayList<>(shortestPaths.get(current));
                     path.add(neighbor);
                     shortestPaths.put(neighbor, path);
 

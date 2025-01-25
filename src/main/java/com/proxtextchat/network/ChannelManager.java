@@ -5,6 +5,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -23,10 +24,9 @@ public class ChannelManager {
 
     public void addNode(@NotNull NetworkNode node){
         // check that we have the channel
-        Channel graph;
 
         if (Graphs.containsKey(node.getChannel())){
-            graph = Graphs.get(node.getChannel());
+            Channel graph = Graphs.get(node.getChannel());
 
             try {
                 graph.AddNode(node);
@@ -59,7 +59,8 @@ public class ChannelManager {
     // every node has a unique id, this allows to store a set of methods to be fired whenever we send a message.
     private static final HashMap<Integer, HashSet<Consumer<Message>>> NodeMessageEvent = new HashMap<>();
 
-    public void addReceivingFromPlayer(PlayerEntity player, Identifier channel) throws ChannelMismatch {
+
+    public void addReceivingFromPlayer(@NotNull PlayerEntity player, @NotNull Identifier channel) throws ChannelMismatch {
         if(Graphs.containsKey(channel)){
             Channel graph = Graphs.get(channel);
 
@@ -70,19 +71,45 @@ public class ChannelManager {
         }
     }
 
-    public void addReceivingFromPlayer(PlayerEntity player, Collection<Identifier> channels) throws ChannelMismatch{
+    public void addSendToPlayer(@NotNull PlayerEntity player, @NotNull Identifier channel) throws ChannelMismatch {
+        if(Graphs.containsKey(channel)){
+            Channel graph = Graphs.get(channel);
+
+            graph.addSendToPlayer(player);
+        }
+        else{
+            throw new ChannelMismatch("No registered channel with that Identifier.");
+        }
+    }
+
+
+    public void addReceivingFromPlayer(@NotNull PlayerEntity player, @NotNull Collection<Identifier> channels) throws ChannelMismatch{
         for(Identifier channel : channels){
             addReceivingFromPlayer(player, channel);
         }
     }
 
-    public void removePlayerEverywhere(PlayerEntity player) {
+    public void addSendToPlayer(@NotNull PlayerEntity player, @NotNull Collection<Identifier> channels) throws  ChannelMismatch{
+        for(Identifier channel : channels){
+            addSendToPlayer(player, channel);
+        }
+    }
+
+
+    public void removeReceivingFromPlayerEverywhere(@NotNull PlayerEntity player) {
         for(Identifier channel : Graphs.keySet()){
             Graphs.get(channel).removeReceivingFromPlayer(player);
         }
     }
 
-    public void removeReceivingFromPlayer(PlayerEntity player, Identifier channel) throws ChannelMismatch{
+    public void removeSendToPlayerEverywhere(@NotNull PlayerEntity player){
+        for(Identifier channel : Graphs.keySet()){
+            Graphs.get(channel).removeReceivingFromPlayer(player);
+        }
+    }
+
+
+    public void removeReceivingFromPlayer(@NotNull PlayerEntity player, @NotNull Identifier channel) throws ChannelMismatch{
         if(Graphs.containsKey(channel)){
             Channel graph = Graphs.get(channel);
 
@@ -93,13 +120,32 @@ public class ChannelManager {
         }
     }
 
-    public void removeReceivingFromPlayer(PlayerEntity player, Collection<Identifier> channels)  throws ChannelMismatch{
+    public void removeSendToPlayer(@NotNull PlayerEntity player, @NotNull Identifier channel) throws ChannelMismatch{
+        if(Graphs.containsKey(channel)){
+            Channel graph = Graphs.get(channel);
+
+            graph.removeSendToPlayer(player);
+        }
+        else{
+            throw new ChannelMismatch("No registered channel with that Identifier.");
+        }
+    }
+
+
+    public void removeReceivingFromPlayer(@NotNull PlayerEntity player, @NotNull Collection<Identifier> channels)  throws ChannelMismatch{
         for(Identifier channel : channels){
             removeReceivingFromPlayer(player, channel);
         }
     }
 
-    public HashSet<Identifier> getReceivingFromChannelsForPlayer(PlayerEntity player){
+    public void removeSendTOPlayer(@NotNull PlayerEntity player, @NotNull Collection<Identifier> channels) throws ChannelMismatch{
+        for(Identifier channel : channels){
+            removeSendToPlayer(player, channel);
+        }
+    }
+
+
+    public HashSet<Identifier> getReceivingFromChannelsForPlayer(@NotNull PlayerEntity player){
         HashSet<Identifier> output = new HashSet<>();
         for(Identifier channel : Graphs.keySet()){
             if(Graphs.get(channel).hasReceivingFromPlayer(player)){
@@ -110,7 +156,20 @@ public class ChannelManager {
         return output;
     }
 
-    public static void SubscribeToNodeMessage(NetworkNode node, Consumer<Message> method){
+    public HashSet<Identifier> getSendToChannelsForPlayer(@NotNull PlayerEntity player){
+        HashSet<Identifier> output = new HashSet<>();
+        for(Identifier channel : Graphs.keySet()){
+            if(Graphs.get(channel).hasSendToPlayer(player)){
+                output.add(channel);
+            }
+        }
+
+        return output;
+    }
+
+
+    // these two are used for non players.
+    public static void SubscribeToNodeMessage(@NotNull NetworkNode node, @NotNull Consumer<Message> method){
         // if there is no set in this slot, add one to avoid a nullptr
         if (!NodeMessageEvent.containsKey(node.getID())){
             NodeMessageEvent.put(node.getID(), new HashSet<>());
@@ -119,7 +178,7 @@ public class ChannelManager {
         NodeMessageEvent.get(node.getID()).add(method);
     }
 
-    public static void UnsubscribeToNodeMessage(NetworkNode node, Consumer<Message> method){
+    public static void UnsubscribeToNodeMessage(@NotNull NetworkNode node, @NotNull Consumer<Message> method){
         if(NodeMessageEvent.containsKey(node.getID())){
             NodeMessageEvent.get(node.getID()).remove(method);
             // if a slot is empty, remove it from the registry to keep our trigger maximally efficient.
@@ -129,13 +188,68 @@ public class ChannelManager {
         }
     }
 
-    public static void TriggerNodeMessage(NetworkNode node, Message message){
+    public static boolean sendMessage(@NotNull NetworkNode source, @NotNull NetworkNode destination, @NotNull Message message) throws ChannelMismatch {
+        if (source.getChannel() != destination.getChannel()){
+            throw new ChannelMismatch("Nodes must have the same channel to send messages between them.");
+        }
+
+        if(!Graphs.containsKey(source.getChannel())){
+            throw new IllegalArgumentException("Channel not registered.");
+        }
+
+        Channel graph = Graphs.get(source.getChannel());
+
+        if (graph.hasNode(source)){
+            throw new IllegalArgumentException("source node not found.");
+        }
+
+        if (graph.hasNode(destination)){
+            throw new IllegalArgumentException("destination node not found.");
+        }
+
+        ArrayList<NetworkNode> path = graph.DirectMessage(source, destination);
+        
+        if(path != null){
+            message.AddTrace(path);
+
+            TriggerNodeMessage(destination, message);
+            
+            return true;
+        }
+        
+        // when there is no valid path from source to destination.
+        return false;
+    }
+
+    public static void broadcastMessage(@NotNull NetworkNode source, Message message){
+        if(!Graphs.containsKey(source.getChannel())){
+            throw new IllegalArgumentException("Channel not registered.");
+        }
+
+        Channel graph = Graphs.get(source.getChannel());
+
+        if (graph.hasNode(source)){
+            throw new IllegalArgumentException("source node not found.");
+        }
+
+        HashMap<NetworkNode, ArrayList<NetworkNode>> paths = graph.BroadcastPaths(source);
+
+        // we send a message to each node the source is connected to.
+        for (NetworkNode destination : paths.keySet()){
+            Message newMessage = new Message(message.getTrueSender(), message.getAlias(), message.getMessage());
+
+            newMessage.AddTrace(paths.get(destination));
+
+            TriggerNodeMessage(destination, newMessage);
+        }
+    }
+
+
+    private static void TriggerNodeMessage(@NotNull NetworkNode node, @NotNull Message message){
         if(NodeMessageEvent.containsKey(node.getID())){
             for (Consumer<Message> method : NodeMessageEvent.get(node.getID())){
                 method.accept(message);
             }
         }
     }
-
-
 }
