@@ -15,7 +15,7 @@ public class ChatRangeRegistry {
 
     public static final GameRules.Key<GameRules.IntRule> PLAYER_CHAT_RANGE =
             GameRuleRegistry.register("playerChatRange", GameRules.Category.CHAT,
-                    GameRuleFactory.createIntRule(5));
+                    GameRuleFactory.createIntRule(64));
 
 
     private static final Map<Identifier, PlayerChatRangeDefinition> registry = new HashMap<>();

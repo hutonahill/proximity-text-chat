@@ -16,6 +16,7 @@ import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.minecraft.command.argument.IdentifierArgumentType;
 import net.minecraft.component.ComponentType;
 import net.minecraft.item.Item;
+import net.minecraft.network.message.SentMessage;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryKeys;
@@ -24,6 +25,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
@@ -53,14 +55,15 @@ public class ProxChatBaseMod implements ModInitializer {
 
     //TODO: this should be a mod page button or a config option.
     public static final GameRules.Key<GameRules.BooleanRule> ENABLE_PROXIMITY_TEXT_CHAT = GameRuleRegistry.register(
-            "EnableProximityTextChat",
+            "enableProximityTextChat",
             GameRules.Category.CHAT,
             GameRuleFactory.createBooleanRule(false)
     );
-    public static final ComponentType<Long> CHANNEL = Registry.register(
+
+    public static final ComponentType<String> CHANNEL = Registry.register(
             Registries.DATA_COMPONENT_TYPE,
             id("channel"),
-            ComponentType.<Long>builder().codec(Codec.LONG).build()
+            ComponentType.<String>builder().codec(Codec.STRING).build()
     );
     public static final TagKey<Item> SEND_IN_INVETORY = TagKey.of(RegistryKeys.ITEM, id("send_in_inventory"));
     public static final TagKey<Item> SEND_IN_HOTBAR = TagKey.of(RegistryKeys.ITEM, id("send_in_hotbar"));
@@ -93,6 +96,7 @@ public class ProxChatBaseMod implements ModInitializer {
 
         ServerMessageEvents.ALLOW_CHAT_MESSAGE.register((message, sender, params) -> {
             MinecraftServer server = sender.getServer();
+            ServerWorld world = sender.getServerWorld();
 
             if (server == null) {
                 return false;
@@ -101,6 +105,11 @@ public class ProxChatBaseMod implements ModInitializer {
             boolean isProximityChatEnabled = server.getGameRules().get(ENABLE_PROXIMITY_TEXT_CHAT).get();
 
             if(isProximityChatEnabled){
+
+                for(ServerPlayerEntity player : world.getPlayers()){
+	               if(player.distanceTo(sender) <= server.getGameRules().getInt(ChatRangeRegistry.PLAYER_CHAT_RANGE) || player == sender)
+                       player.sendChatMessage(SentMessage.of(message), false, params);
+                }
 
                 for(Identifier channelId : manager.getReceivingFromChannelsForPlayer(sender)){
                     // for each channel get the range of the channel then figure out if the player is in that chunk.
