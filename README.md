@@ -43,6 +43,16 @@ This mod is not a full implementation of the linked design document, but the fou
 - Add playerRange gamerule to the Mod page.
 
 
+## Documentation
+
+This mod adds a system of networks of nodes (channels) A node is composed of a set of `WorldChunks` 
+which it can send messages to and a set of `WorldChunks` it can receive messages from. This creates a 
+network you can send messages though using methods in `ChannelManager`. Messages contain the text of 
+the message the actual sending entity, an alias for that entity and the path the message took to get 
+to its destination.
+
+This section will be rewritten as the mod gets closer to completion.
+
 ## License
 
 This project is licensed under the GNU Lesser General Public License v3.0 (LGPL-3.0).
