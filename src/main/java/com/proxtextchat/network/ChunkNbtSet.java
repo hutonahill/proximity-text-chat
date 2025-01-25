@@ -16,28 +16,28 @@ import net.minecraft.world.chunk.WorldChunk;
 import java.util.HashSet;
 import java.util.Set;
 
-public class ChunkNbtArray{
+public class ChunkNbtSet {
     private final long[] location;
-    private final String LocationKey = "Location";
+    private static final String LocationKey = "Location";
 
     private final String[] dimension;
-    private final String DimensionKey = "Dimension";
+    private static final String DimensionKey = "Dimension";
 
     // Constructor to initialize the arrays
-    public ChunkNbtArray(Set<WorldChunk> chunks){
+    public ChunkNbtSet(Set<WorldChunk> chunks){
         location = new long[chunks.size()];
         dimension = new String[chunks.size()];
 
         int index = 0;
         for (WorldChunk chunk : chunks){
             location[index] = chunk.getPos().toLong();
-            dimension[index] = chunk.getWorld().getRegistryKey().getValue().toString();
+            dimension[index] = chunk.getWorld().getRegistryKey().toString();
 
             index++;
         }
     }
 
-    public ChunkNbtArray(NbtCompound nbt) {
+    public ChunkNbtSet(NbtCompound nbt) {
         // Retrieve the long array from NBT
         location = nbt.getLongArray(LocationKey);
 

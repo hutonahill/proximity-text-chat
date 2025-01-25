@@ -1,24 +1,24 @@
 package com.proxtextchat.network;
 
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.chunk.WorldChunk;
 import org.jetbrains.annotations.NotNull;
-import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DirectedMultigraph;
 
 import java.util.*;
 
-public class NetworkGraph {
+public class Channel {
     private final DirectedMultigraph<NetworkNode, DefaultEdge> Graph = new DirectedMultigraph<>(DefaultEdge.class);
 
     private final HashMap<WorldChunk, HashSet<NetworkNode>> NodeLocationRegistry = new HashMap<>();
 
-    private Identifier Channel = null;
+    private final HashSet<PlayerEntity> PlayerRegistry = new HashSet<>();
 
-    public NetworkGraph(HashSet<NetworkNode> nodes) throws ChannelMismatch {
+    private Identifier ID = null;
 
-
+    public Channel(HashSet<NetworkNode> nodes) throws ChannelMismatch {
 
         // a registry of nodes that lets us avoid looping though the
         // node set a second time.
@@ -27,15 +27,15 @@ public class NetworkGraph {
         for (NetworkNode node : nodes){
 
             // make sure all nodes have the same channel.
-            if(Channel != null){
-                if(node.getChannel().equals(Channel)){
+            if(ID != null){
+                if(!node.getChannel().equals(ID)){
                     throw new ChannelMismatch("Node at" + node.getLocation() + "doesn't match the expected channel");
                 }
             }
 
             // if our channel var is null we fill it
             else{
-                Channel = node.getChannel();
+                ID = node.getChannel();
             }
 
             // if we haven't thrown an exception, add the node to the graph.
@@ -72,7 +72,7 @@ public class NetworkGraph {
         }
     }
 
-    public void AddNode(@NotNull NetworkNode node){
+    public void AddNode(@NotNull NetworkNode node) throws ChannelMismatch {
 
         // make sure the node is not already in the graph.
         if(Graph.containsVertex(node)){
@@ -80,8 +80,8 @@ public class NetworkGraph {
         }
 
         // make sure the node is in the right channel.
-        if(node.getChannel() != Channel){
-            return;
+        if(node.getChannel() != ID){
+            throw new ChannelMismatch("Node doss not match channel");
         }
 
         //first we add the node to the graph
@@ -124,9 +124,9 @@ public class NetworkGraph {
 
     }
 
-    private HashMap<NetworkNode, HashMap<NetworkNode, Set<NetworkNode>>> ShortestPathRegistry = new HashMap<>();
+    private HashMap<NetworkNode, HashMap<NetworkNode, HashSet<NetworkNode>>> ShortestPathRegistry = new HashMap<>();
 
-    public Set<NetworkNode> DirectMessage(@NotNull NetworkNode origin, @NotNull NetworkNode destination){
+    public HashSet<NetworkNode> DirectMessage(@NotNull NetworkNode origin, @NotNull NetworkNode destination){
         PopulateShortestPathRegistry();
 
         if (!ShortestPathRegistry.containsKey(origin)) {
@@ -136,7 +136,7 @@ public class NetworkGraph {
         return ShortestPathRegistry.get(origin).get(destination);
     }
 
-    public HashMap<NetworkNode, Set<NetworkNode>> BroadcastPaths(@NotNull NetworkNode origin){
+    public HashMap<NetworkNode, HashSet<NetworkNode>> BroadcastPaths(@NotNull NetworkNode origin){
         if (!ShortestPathRegistry.containsKey(origin)){
             return null;
         }
@@ -147,20 +147,17 @@ public class NetworkGraph {
     private void PopulateShortestPathRegistry(){
         if (ShortestPathRegistry.isEmpty()){
 
-            DijkstraShortestPath<NetworkNode, DefaultEdge> dijkstra =
-                    new DijkstraShortestPath<>(Graph);
 
             // for each node
             for (NetworkNode source : Graph.vertexSet()) {
-                HashMap<NetworkNode, List<NetworkNode>> pathsFromSource = new HashMap<>();
 
                 ShortestPathRegistry.put(source, computeShortestPaths(source));
             }
         }
     }
 
-    private @NotNull HashMap<NetworkNode, Set<NetworkNode>> computeShortestPaths(@NotNull NetworkNode source) {
-        if (source.getChannel() != Channel){
+    private @NotNull HashMap<NetworkNode, HashSet<NetworkNode>> computeShortestPaths(@NotNull NetworkNode source) {
+        if (source.getChannel() != ID){
             return new HashMap<>();
         }
         else if (Graph.containsVertex(source)){
@@ -168,7 +165,7 @@ public class NetworkGraph {
         }
 
         // Map to store the shortest path from the source to each node
-        HashMap<NetworkNode, Set<NetworkNode>> shortestPaths = new HashMap<>();
+        HashMap<NetworkNode, HashSet<NetworkNode>> shortestPaths = new HashMap<>();
 
         // Map to store the minimum distance from the source to each node
         HashMap<NetworkNode, Double> distances = new HashMap<>();
@@ -204,7 +201,7 @@ public class NetworkGraph {
                     distances.put(neighbor, newDistance);
 
                     // Update the path to the neighbor
-                    Set<NetworkNode> path = new HashSet<>(shortestPaths.get(current));
+                    HashSet<NetworkNode> path = new HashSet<>(shortestPaths.get(current));
                     path.add(neighbor);
                     shortestPaths.put(neighbor, path);
 
@@ -214,6 +211,22 @@ public class NetworkGraph {
         }
 
         return shortestPaths;
+    }
+
+    public @NotNull Set<PlayerEntity> getPlayerRegistry(){
+        return Collections.unmodifiableSet(PlayerRegistry);
+    }
+
+    public void addPlayer(@NotNull PlayerEntity player){
+        PlayerRegistry.add(player);
+    }
+
+    public void removePlayer(@NotNull PlayerEntity player){
+        PlayerRegistry.remove(player);
+    }
+
+    public boolean hasPlayer(@NotNull PlayerEntity player){
+        return PlayerRegistry.contains(player);
     }
 }
 

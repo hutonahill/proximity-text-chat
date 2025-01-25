@@ -11,7 +11,7 @@ import java.util.Set;
 public class NetworkNode {
 
     private static final List<Integer> idCounter = new ArrayList<>();
-    private Integer ID;
+    private final Integer ID;
 
     private static Integer generateId(){
 

@@ -19,30 +19,30 @@ public class NetworkNodeNBT {
     public Identifier Channel;
     private static final String ChannelKey = "Channel";
 
-    public ChunkNbtArray Chunks;
+    public ChunkNbtSet Chunks;
     private static final String ChunkKey = "Chunks";
 
-    public Identifier Dimension;
+    public RegistryKey<World> Dimension;
     private static final String DimensionKey = "Dimension";
 
     public NetworkNodeNBT(@NotNull NetworkNode node){
         Location = node.getLocation().getPos().toLong();
 
-        Dimension = node.getLocation().getWorld().getRegistryKey().getValue();
+        Dimension = node.getLocation().getWorld().getRegistryKey();
 
         Channel = node.getChannel();
 
         Set<WorldChunk> nodeChunks = node.getRange();
 
-        Chunks = new ChunkNbtArray(nodeChunks);
+        Chunks = new ChunkNbtSet(nodeChunks);
 
     }
 
     public NetworkNodeNBT(@NotNull NbtCompound nbt){
-        Chunks = new ChunkNbtArray(nbt);
+        Chunks = new ChunkNbtSet(nbt);
         Location = nbt.getLong(LocationKey);
-        Channel = Identifier.of(nbt.getString(ChannelKey)) ;
-        Dimension = Identifier.of(nbt.getString(DimensionKey));
+        //Channel = RegistryKey.of(RegistryKey.of("Channel"), nbt.getString(ChannelKey));
+        Dimension = RegistryKey.of(RegistryKeys.WORLD, Identifier.of(nbt.getString(DimensionKey)));
     }
 
     public NbtCompound toNbt(){
@@ -63,7 +63,7 @@ public class NetworkNodeNBT {
         ChunkPos NodeLocation = new ChunkPos(Location);
 
         // Get the worldKey of the node
-        RegistryKey<World> nodeWorldKey = RegistryKey.of(RegistryKeys.WORLD, Dimension);
+        RegistryKey<World> nodeWorldKey = Dimension;
 
         // use that worldKey to get the world
         World nodeWorld = server.getWorld(nodeWorldKey);

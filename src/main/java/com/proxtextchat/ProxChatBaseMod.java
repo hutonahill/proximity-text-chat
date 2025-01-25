@@ -6,6 +6,7 @@ import com.proxtextchat.PlayerChatRageMethodCommand.ChatRangeRegistry;
 import com.proxtextchat.PlayerChatRageMethodCommand.PlayerChatRangeDefinition;
 import com.proxtextchat.PlayerChatRageMethodCommand.PlayerChatRangeMethodCommandSuggestionProvider;
 import com.proxtextchat.PlayerChatRageMethodCommand.StandardPlayerChatRangeMethod;
+import com.proxtextchat.network.ChannelManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.gamerule.v1.GameRuleFactory;
@@ -19,12 +20,12 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.GameRules;
 import net.minecraft.world.chunk.Chunk;
 
 import java.util.HashSet;
 import java.util.Set;
+
 
 import static net.minecraft.server.command.CommandManager.*;
 
@@ -32,12 +33,14 @@ import static net.minecraft.server.command.CommandManager.*;
 
 public class ProxChatBaseMod implements ModInitializer {
 
-    public static final GameRules.Key<GameRules.BooleanRule> CUSTOM_RULE = GameRuleRegistry.register(
+    //TODO: this should be a mod page button or a config option.
+    public static final GameRules.Key<GameRules.BooleanRule> ENABLE_PROXIMITY_TEXT_CHAT = GameRuleRegistry.register(
             "EnableProximityTextChat",
             GameRules.Category.CHAT,
             GameRuleFactory.createBooleanRule(false)
     );
 
+    // TODO: add a game rule for this value
     private static int chatRange = 5;
 
     public static final String MOD_ID = "proxchatbasemod";
@@ -45,6 +48,8 @@ public class ProxChatBaseMod implements ModInitializer {
     public static final String ChatMethodArgumentName = "Method";
 
     private static final PlayerChatRangeDefinition ChatMethod = StandardPlayerChatRangeMethod.getInstance();
+
+    private static final ChannelManager manager = ChannelManager.Instance;
 
     @Override
     public void onInitialize() {
@@ -73,12 +78,15 @@ public class ProxChatBaseMod implements ModInitializer {
                 return false;
             }
 
-            boolean isProximityChatEnabled = server.getGameRules().get(CUSTOM_RULE).get();
+            boolean isProximityChatEnabled = server.getGameRules().get(ENABLE_PROXIMITY_TEXT_CHAT).get();
 
             if(isProximityChatEnabled){
-                // other stuff
 
-                Set<Chunk> ChunksToSend = ChatMethod.getChunks(sender, chatRange);
+                for(Identifier channelId : manager.getChannelsForPlayer(sender)){
+                    // for each channel get the range of the channel then figure out if the player is in that chunk.
+
+                    // if the player is in the range of a node on the channel, broadcast from that channel.
+                }
 
                 return false;
             }

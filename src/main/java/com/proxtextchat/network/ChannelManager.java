@@ -1,8 +1,11 @@
 package com.proxtextchat.network;
 
 import com.proxtextchat.Message;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
+import org.jetbrains.annotations.NotNull;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.function.Consumer;
@@ -12,32 +15,39 @@ import java.util.function.Consumer;
  */
 public class ChannelManager {
 
-    private HashMap<Identifier, NetworkGraph> Graphs = new HashMap<>();
+    public static final ChannelManager Instance = new ChannelManager();
 
-    public void addNode(NetworkNode node){
+    private ChannelManager(){}
+
+    private static final HashMap<Identifier, Channel> Graphs = new HashMap<>();
+
+    public void addNode(@NotNull NetworkNode node){
         // check that we have the channel
-        NetworkGraph graph;
+        Channel graph;
 
         if (Graphs.containsKey(node.getChannel())){
             graph = Graphs.get(node.getChannel());
 
-            graph.AddNode(node);
+            try {
+                graph.AddNode(node);
+            } catch (ChannelMismatch e) {
+                throw new RuntimeException(e);
+            }
         }
         else{
-
             HashSet<NetworkNode> tempSet = new HashSet<>();
             tempSet.add(node);
             try {
-                Graphs.put(node.getChannel(), new NetworkGraph(tempSet));
+                Graphs.put(node.getChannel(), new Channel(tempSet));
             } catch (ChannelMismatch e) {
                 throw new RuntimeException(e);
             }
         }
     }
 
-    public void RemoveNode(NetworkNode node){
+    public void RemoveNode(@NotNull NetworkNode node){
         if(Graphs.containsKey((node.getChannel()))){
-            NetworkGraph graph = Graphs.get(node.getChannel());
+            Channel graph = Graphs.get(node.getChannel());
 
             
             graph.RemoveNode(node);
@@ -48,6 +58,59 @@ public class ChannelManager {
     // stores subscriptions.
     // every node has a unique id, this allows to store a set of methods to be fired whenever we send a message.
     private static final HashMap<Integer, HashSet<Consumer<Message>>> NodeMessageEvent = new HashMap<>();
+
+    public void addPlayer(PlayerEntity player, Identifier channel) throws ChannelMismatch {
+        if(Graphs.containsKey(channel)){
+            Channel graph = Graphs.get(channel);
+
+            graph.addPlayer(player);
+        }
+        else{
+            throw new ChannelMismatch("No registered channel with that Identifier.");
+        }
+    }
+
+
+
+    public void addPlayer(PlayerEntity player, Collection<Identifier> channels) throws ChannelMismatch{
+        for(Identifier channel : channels){
+            addPlayer(player, channel);
+        }
+    }
+
+    public void removePlayerEverywhere(PlayerEntity player) {
+        for(Identifier channel : Graphs.keySet()){
+            Graphs.get(channel).removePlayer(player);
+        }
+    }
+
+    public void removePlayer(PlayerEntity player, Identifier channel) throws ChannelMismatch{
+        if(Graphs.containsKey(channel)){
+            Channel graph = Graphs.get(channel);
+
+            graph.removePlayer(player);
+        }
+        else{
+            throw new ChannelMismatch("No registered channel with that Identifier.");
+        }
+    }
+
+    public void removePlayer(PlayerEntity player, Collection<Identifier> channels)  throws ChannelMismatch{
+        for(Identifier channel : channels){
+            removePlayer(player, channel);
+        }
+    }
+
+    public HashSet<Identifier> getChannelsForPlayer(PlayerEntity player){
+        HashSet<Identifier> output = new HashSet<>();
+        for(Identifier channel : Graphs.keySet()){
+            if(Graphs.get(channel).hasPlayer(player)){
+                output.add(channel);
+            }
+        }
+
+        return output;
+    }
 
     public static void SubscribeToNodeMessage(NetworkNode node, Consumer<Message> method){
         // if there is no set in this slot, add one to avoid a nullptr
