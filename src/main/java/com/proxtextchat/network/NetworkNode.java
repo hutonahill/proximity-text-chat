@@ -4,9 +4,7 @@ package com.proxtextchat.network;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.chunk.WorldChunk;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class NetworkNode {
 
@@ -28,22 +26,26 @@ public class NetworkNode {
             }
         }
     }
-    private final WorldChunk Location;
+    private final Set<WorldChunk> ReceivingChunks;
 
-    private final Identifier Channel;
+    private final Identifier ChannelId;
 
     private final Set<WorldChunk> Range;
 
 
-    public NetworkNode(Identifier channel, WorldChunk location, Set<WorldChunk> chunks){
-        Channel = channel;
-        Location = location;
-        Range = chunks;
+    public NetworkNode(Identifier channel, Set<WorldChunk> receivingChunks, Set<WorldChunk> rangeChunks){
+        if (receivingChunks.isEmpty()){
+            throw new IllegalArgumentException("Must have at least one receiving chunk.");
+        }
+
+        ChannelId = channel;
+        ReceivingChunks = receivingChunks;
+        Range = rangeChunks;
 
         ID = generateId();
     }
 
-    public NetworkNode(Identifier channel, WorldChunk location, Set<WorldChunk> chunks, Integer id){
+    public NetworkNode(Identifier channel, Set<WorldChunk> receivingChunks, Set<WorldChunk> chunks, Integer id){
         if (idCounter.contains(id)){
             throw new IllegalArgumentException("id `" + id + "` has already been assigned");
         }
@@ -51,21 +53,21 @@ public class NetworkNode {
         ID = id;
         idCounter.add(id);
 
-        Channel = channel;
-        Location = location;
+        ChannelId = channel;
+        ReceivingChunks = receivingChunks;
         Range = chunks;
     }
 
-    public WorldChunk getLocation() {
-        return Location;
+    public Set<WorldChunk> getReceivingChunks() {
+        return Collections.unmodifiableSet(ReceivingChunks);
     }
 
-    public Identifier getChannel() {
-        return Channel;
+    public Identifier getChannelId() {
+        return ChannelId;
     }
 
     public Set<WorldChunk> getRange() {
-        return Range;
+        return Collections.unmodifiableSet(Range);
     }
 
     public Integer getID(){ return ID;}

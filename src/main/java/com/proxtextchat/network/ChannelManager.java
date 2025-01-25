@@ -25,8 +25,8 @@ public class ChannelManager {
     public void addNode(@NotNull NetworkNode node){
         // check that we have the channel
 
-        if (Graphs.containsKey(node.getChannel())){
-            Channel graph = Graphs.get(node.getChannel());
+        if (Graphs.containsKey(node.getChannelId())){
+            Channel graph = Graphs.get(node.getChannelId());
 
             try {
                 graph.AddNode(node);
@@ -38,7 +38,7 @@ public class ChannelManager {
             HashSet<NetworkNode> tempSet = new HashSet<>();
             tempSet.add(node);
             try {
-                Graphs.put(node.getChannel(), new Channel(tempSet));
+                Graphs.put(node.getChannelId(), new Channel(tempSet));
             } catch (ChannelMismatch e) {
                 throw new RuntimeException(e);
             }
@@ -46,8 +46,8 @@ public class ChannelManager {
     }
 
     public void RemoveNode(@NotNull NetworkNode node){
-        if(Graphs.containsKey((node.getChannel()))){
-            Channel graph = Graphs.get(node.getChannel());
+        if(Graphs.containsKey((node.getChannelId()))){
+            Channel graph = Graphs.get(node.getChannelId());
 
             
             graph.RemoveNode(node);
@@ -189,15 +189,15 @@ public class ChannelManager {
     }
 
     public static boolean sendMessage(@NotNull NetworkNode source, @NotNull NetworkNode destination, @NotNull Message message) throws ChannelMismatch {
-        if (source.getChannel() != destination.getChannel()){
+        if (source.getChannelId() != destination.getChannelId()){
             throw new ChannelMismatch("Nodes must have the same channel to send messages between them.");
         }
 
-        if(!Graphs.containsKey(source.getChannel())){
+        if(!Graphs.containsKey(source.getChannelId())){
             throw new IllegalArgumentException("Channel not registered.");
         }
 
-        Channel graph = Graphs.get(source.getChannel());
+        Channel graph = Graphs.get(source.getChannelId());
 
         if (graph.hasNode(source)){
             throw new IllegalArgumentException("source node not found.");
@@ -222,11 +222,11 @@ public class ChannelManager {
     }
 
     public static void broadcastMessage(@NotNull NetworkNode source, Message message){
-        if(!Graphs.containsKey(source.getChannel())){
+        if(!Graphs.containsKey(source.getChannelId())){
             throw new IllegalArgumentException("Channel not registered.");
         }
 
-        Channel graph = Graphs.get(source.getChannel());
+        Channel graph = Graphs.get(source.getChannelId());
 
         if (graph.hasNode(source)){
             throw new IllegalArgumentException("source node not found.");

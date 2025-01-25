@@ -33,6 +33,7 @@ This mod is not a full implementation of the linked design document, but the fou
   - receiveInCurios
 - Add ChatRangeMethod gamerule to the Mod page
 - Add playerRange gamerule to the Mod page.
+- Add commands for adding and removing nodes.
 
 
 ## Documentation
