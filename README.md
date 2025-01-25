@@ -56,3 +56,7 @@ The LGPL allows you to:
 - Share improvements and changes to this code with the community.
 
 For full details, see the [LICENSE](LICENSE) file.
+
+## Activity
+
+![Alt](https://repobeats.axiom.co/api/embed/3c3df086f5a4a4b42466dd97000fdc6b639b3c7f.svg "Repobeats analytics image")
