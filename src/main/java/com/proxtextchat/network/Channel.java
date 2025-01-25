@@ -14,7 +14,9 @@ public class Channel {
 
     private final HashMap<WorldChunk, HashSet<NetworkNode>> NodeLocationRegistry = new HashMap<>();
 
-    private final HashSet<PlayerEntity> PlayerRegistry = new HashSet<>();
+    private final HashSet<PlayerEntity> ReceiveFromPlayerRegistry = new HashSet<>();
+
+    private final HashSet<PlayerEntity> SendToPlayerRegistry = new HashSet<>();
 
     private Identifier ID = null;
 
@@ -213,20 +215,36 @@ public class Channel {
         return shortestPaths;
     }
 
-    public @NotNull Set<PlayerEntity> getPlayerRegistry(){
-        return Collections.unmodifiableSet(PlayerRegistry);
+    public @NotNull Set<PlayerEntity> getReceiveFromPlayerRegistry(){
+        return Collections.unmodifiableSet(ReceiveFromPlayerRegistry);
     }
 
-    public void addPlayer(@NotNull PlayerEntity player){
-        PlayerRegistry.add(player);
+    public @NotNull Set<PlayerEntity> getSendToPlayerRegistry() {
+        return Collections.unmodifiableSet(SendToPlayerRegistry);
     }
 
-    public void removePlayer(@NotNull PlayerEntity player){
-        PlayerRegistry.remove(player);
+    public void addReceivingFromPlayer(@NotNull PlayerEntity player){
+        ReceiveFromPlayerRegistry.add(player);
     }
 
-    public boolean hasPlayer(@NotNull PlayerEntity player){
-        return PlayerRegistry.contains(player);
+    public void addSendToPlayer(@NotNull PlayerEntity player){
+        SendToPlayerRegistry.add(player);
+    }
+
+    public void removeReceivingFromPlayer(@NotNull PlayerEntity player){
+        ReceiveFromPlayerRegistry.remove(player);
+    }
+
+    public void removeSendToPlayer(@NotNull PlayerEntity player){
+        SendToPlayerRegistry.remove(player);
+    }
+
+    public boolean hasReceivingFromPlayer(@NotNull PlayerEntity player){
+        return ReceiveFromPlayerRegistry.contains(player);
+    }
+
+    public boolean hasSendToPlayer(@NotNull PlayerEntity player){
+        return SendToPlayerRegistry.contains(player);
     }
 }
 

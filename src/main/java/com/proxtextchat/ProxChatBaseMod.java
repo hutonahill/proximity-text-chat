@@ -82,7 +82,7 @@ public class ProxChatBaseMod implements ModInitializer {
 
             if(isProximityChatEnabled){
 
-                for(Identifier channelId : manager.getChannelsForPlayer(sender)){
+                for(Identifier channelId : manager.getReceivingFromChannelsForPlayer(sender)){
                     // for each channel get the range of the channel then figure out if the player is in that chunk.
 
                     // if the player is in the range of a node on the channel, broadcast from that channel.

@@ -59,52 +59,50 @@ public class ChannelManager {
     // every node has a unique id, this allows to store a set of methods to be fired whenever we send a message.
     private static final HashMap<Integer, HashSet<Consumer<Message>>> NodeMessageEvent = new HashMap<>();
 
-    public void addPlayer(PlayerEntity player, Identifier channel) throws ChannelMismatch {
+    public void addReceivingFromPlayer(PlayerEntity player, Identifier channel) throws ChannelMismatch {
         if(Graphs.containsKey(channel)){
             Channel graph = Graphs.get(channel);
 
-            graph.addPlayer(player);
+            graph.addReceivingFromPlayer(player);
         }
         else{
             throw new ChannelMismatch("No registered channel with that Identifier.");
         }
     }
 
-
-
-    public void addPlayer(PlayerEntity player, Collection<Identifier> channels) throws ChannelMismatch{
+    public void addReceivingFromPlayer(PlayerEntity player, Collection<Identifier> channels) throws ChannelMismatch{
         for(Identifier channel : channels){
-            addPlayer(player, channel);
+            addReceivingFromPlayer(player, channel);
         }
     }
 
     public void removePlayerEverywhere(PlayerEntity player) {
         for(Identifier channel : Graphs.keySet()){
-            Graphs.get(channel).removePlayer(player);
+            Graphs.get(channel).removeReceivingFromPlayer(player);
         }
     }
 
-    public void removePlayer(PlayerEntity player, Identifier channel) throws ChannelMismatch{
+    public void removeReceivingFromPlayer(PlayerEntity player, Identifier channel) throws ChannelMismatch{
         if(Graphs.containsKey(channel)){
             Channel graph = Graphs.get(channel);
 
-            graph.removePlayer(player);
+            graph.removeReceivingFromPlayer(player);
         }
         else{
             throw new ChannelMismatch("No registered channel with that Identifier.");
         }
     }
 
-    public void removePlayer(PlayerEntity player, Collection<Identifier> channels)  throws ChannelMismatch{
+    public void removeReceivingFromPlayer(PlayerEntity player, Collection<Identifier> channels)  throws ChannelMismatch{
         for(Identifier channel : channels){
-            removePlayer(player, channel);
+            removeReceivingFromPlayer(player, channel);
         }
     }
 
-    public HashSet<Identifier> getChannelsForPlayer(PlayerEntity player){
+    public HashSet<Identifier> getReceivingFromChannelsForPlayer(PlayerEntity player){
         HashSet<Identifier> output = new HashSet<>();
         for(Identifier channel : Graphs.keySet()){
-            if(Graphs.get(channel).hasPlayer(player)){
+            if(Graphs.get(channel).hasReceivingFromPlayer(player)){
                 output.add(channel);
             }
         }
