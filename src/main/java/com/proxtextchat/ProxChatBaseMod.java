@@ -2,6 +2,7 @@ package com.proxtextchat;
 
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
+import com.mojang.serialization.Codec;
 import com.proxtextchat.PlayerChatRageMethodCommand.ChatRangeRegistry;
 import com.proxtextchat.PlayerChatRageMethodCommand.PlayerChatRangeDefinition;
 import com.proxtextchat.PlayerChatRageMethodCommand.PlayerChatRangeMethodCommandSuggestionProvider;
@@ -13,6 +14,12 @@ import net.fabricmc.fabric.api.gamerule.v1.GameRuleFactory;
 import net.fabricmc.fabric.api.gamerule.v1.GameRuleRegistry;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.minecraft.command.argument.IdentifierArgumentType;
+import net.minecraft.component.ComponentType;
+import net.minecraft.item.Item;
+import net.minecraft.registry.Registries;
+import net.minecraft.registry.Registry;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.tag.TagKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
@@ -33,13 +40,6 @@ import static net.minecraft.server.command.CommandManager.*;
 
 public class ProxChatBaseMod implements ModInitializer {
 
-    //TODO: this should be a mod page button or a config option.
-    public static final GameRules.Key<GameRules.BooleanRule> ENABLE_PROXIMITY_TEXT_CHAT = GameRuleRegistry.register(
-            "EnableProximityTextChat",
-            GameRules.Category.CHAT,
-            GameRuleFactory.createBooleanRule(false)
-    );
-
     // TODO: add a game rule for this value
     private static int chatRange = 5;
 
@@ -50,6 +50,26 @@ public class ProxChatBaseMod implements ModInitializer {
     private static final PlayerChatRangeDefinition ChatMethod = StandardPlayerChatRangeMethod.getInstance();
 
     private static final ChannelManager manager = ChannelManager.Instance;
+
+    //TODO: this should be a mod page button or a config option.
+    public static final GameRules.Key<GameRules.BooleanRule> ENABLE_PROXIMITY_TEXT_CHAT = GameRuleRegistry.register(
+            "EnableProximityTextChat",
+            GameRules.Category.CHAT,
+            GameRuleFactory.createBooleanRule(false)
+    );
+    public static final ComponentType<Long> CHANNEL = Registry.register(
+            Registries.DATA_COMPONENT_TYPE,
+            id("channel"),
+            ComponentType.<Long>builder().codec(Codec.LONG).build()
+    );
+    public static final TagKey<Item> SEND_IN_INVETORY = TagKey.of(RegistryKeys.ITEM, id("send_in_inventory"));
+    public static final TagKey<Item> SEND_IN_HOTBAR = TagKey.of(RegistryKeys.ITEM, id("send_in_hotbar"));
+    public static final TagKey<Item> SEND_IN_HAND = TagKey.of(RegistryKeys.ITEM, id("send_in_hand"));
+
+    public static final TagKey<Item> RECEIVE_IN_INVETORY = TagKey.of(RegistryKeys.ITEM, id("receive_in_inventory"));
+    public static final TagKey<Item> RECEIVE_IN_HOTBAR = TagKey.of(RegistryKeys.ITEM, id("receive_in_hotbar"));
+    public static final TagKey<Item> RECEIVE_IN_HAND = TagKey.of(RegistryKeys.ITEM, id("receive_in_hand"));
+
 
     @Override
     public void onInitialize() {
@@ -131,5 +151,9 @@ public class ProxChatBaseMod implements ModInitializer {
 
 
         return 1;
+    }
+    public static Identifier id(String path)
+    {
+        return Identifier.of(MOD_ID, path);
     }
 }
