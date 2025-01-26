@@ -234,6 +234,10 @@ public class Channel {
         return shortestPaths;
     }
 
+    public @NotNull Map<WorldChunk, HashSet<NetworkNode>> getNodeReceivingRegistry(){
+        return Collections.unmodifiableMap(NodeReceivingRegistry);
+    }
+
     public @NotNull Set<PlayerEntity> getReceiveFromPlayerRegistry(){
         return Collections.unmodifiableSet(ReceiveFromPlayerRegistry);
     }

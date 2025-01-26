@@ -3,12 +3,10 @@ package com.proxtextchat.network;
 import com.proxtextchat.Message;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
+import net.minecraft.world.chunk.WorldChunk;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.*;
 import java.util.function.Consumer;
 
 /**
@@ -56,8 +54,26 @@ public class ChannelManager {
 
 
     // stores subscriptions.
-    // every node has a unique id, this allows to store a set of methods to be fired whenever we send a message.
+    // every node has a unique id, this allows storing a set of methods to be fired whenever we send a message.
     private static final HashMap<Integer, HashSet<Consumer<Message>>> NodeMessageEvent = new HashMap<>();
+
+    public HashSet<NetworkNode> NodesInChunk(WorldChunk chunk, Set<Identifier> channels) throws ChannelMismatch {
+        HashSet<NetworkNode> output = new HashSet<>();
+        for(Identifier channel : channels){
+            if(!Graphs.containsKey(channel)){
+                throw new ChannelMismatch("Could not find channel " + channel.toString());
+            }
+
+            Map<WorldChunk, HashSet<NetworkNode>> nodeReceivingRegistry = Graphs.get(channel).getNodeReceivingRegistry();
+
+            if(nodeReceivingRegistry.containsKey(chunk)){
+                output.addAll(nodeReceivingRegistry.get(chunk));
+            }
+        }
+
+        return  output;
+    }
+
 
 
     public void addReceivingFromPlayer(@NotNull PlayerEntity player, @NotNull Identifier channel) throws ChannelMismatch {
@@ -168,7 +184,7 @@ public class ChannelManager {
     }
 
 
-    // these two are used for non players.
+    // these two are used for non-players.
     public static void SubscribeToNodeMessage(@NotNull NetworkNode node, @NotNull Consumer<Message> method){
         // if there is no set in this slot, add one to avoid a nullptr
         if (!NodeMessageEvent.containsKey(node.getID())){
@@ -187,6 +203,7 @@ public class ChannelManager {
             }
         }
     }
+
 
     public static boolean sendMessage(@NotNull NetworkNode source, @NotNull NetworkNode destination, @NotNull Message message) throws ChannelMismatch {
         if (source.getChannelId() != destination.getChannelId()){
@@ -221,7 +238,7 @@ public class ChannelManager {
         return false;
     }
 
-    public static void broadcastMessage(@NotNull NetworkNode source, Message message){
+    public void broadcastMessage(@NotNull NetworkNode source, Message message){
         if(!Graphs.containsKey(source.getChannelId())){
             throw new IllegalArgumentException("Channel not registered.");
         }

@@ -11,7 +11,7 @@ import java.util.List;
 public class Message {
     private final Entity TrueSender;
 
-    private final String Alias;
+    private final Text Alias;
 
     private final Text Message;
 
@@ -19,7 +19,7 @@ public class Message {
 
     private final Instant SendTime;
 
-    public Message(Entity trueSender, String alias, Text message){
+    public Message(Entity trueSender, Text alias, Text message){
         TrueSender = trueSender;
         Alias = alias;
         Message = message;
@@ -29,7 +29,7 @@ public class Message {
     }
 
     Message(Entity trueSender, Text message){
-        this(trueSender, trueSender.getName().toString(), message);
+        this(trueSender, trueSender.getName(), message);
     }
 
     public void AddStep(NetworkNode node){
@@ -48,7 +48,7 @@ public class Message {
         return TrueSender;
     }
 
-    public String getAlias(){return Alias;}
+    public Text getAlias(){return Alias;}
 
     public List<NetworkNode> getTrace() {
         return Trace;

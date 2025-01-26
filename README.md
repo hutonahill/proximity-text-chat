@@ -27,13 +27,15 @@ This mod is not a full implementation of the linked design document, but the fou
 
 - Implement threading for populating the shortest path registries.
 - revisit storage and make sure we are storing channels properly
-- Nodes should have a set of receiving chunks instead of a single one (hutonahill)
 - Item Tags:
   - sendInCurios
   - receiveInCurios
 - Add ChatRangeMethod gamerule to the Mod page
 - Add playerRange gamerule to the Mod page.
 - Add commands for adding and removing nodes.
+- Add compatability with proximity voice chat mod.
+- add modifiable Alias property to players, default to username. (can we keep this server side?)
+- Use alias properly when generating messages from players. 
 
 
 ## Documentation
