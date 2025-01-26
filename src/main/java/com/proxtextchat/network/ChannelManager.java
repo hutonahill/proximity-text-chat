@@ -3,6 +3,7 @@ package com.proxtextchat.network;
 import com.proxtextchat.Message;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
+import net.minecraft.world.World;
 import net.minecraft.world.chunk.WorldChunk;
 import org.jetbrains.annotations.NotNull;
 
@@ -266,6 +267,28 @@ public class ChannelManager {
         if(NodeMessageEvent.containsKey(node.getID())){
             for (Consumer<Message> method : NodeMessageEvent.get(node.getID())){
                 method.accept(message);
+            }
+        }
+
+        // now deliver the messages to players
+
+        Set<PlayerEntity> registeredPlayers = Graphs.get(node.getChannelId()).getSendToPlayerRegistry();
+
+        for(PlayerEntity player : registeredPlayers){
+            // filter out offline players
+            World world = player.getWorld();
+            if (world != null && player.getServer() != null) {
+
+                // Get the player's current chunk coordinates
+                int chunkX = player.getBlockPos().getX();
+                int chunkZ = player.getBlockPos().getZ();
+
+                // Retrieve the chunk from the world
+                WorldChunk playerChunk = world.getChunk(chunkX, chunkZ);
+
+                if(node.getRange().contains(playerChunk)){
+                    player.sendMessage(message.getMessage());
+                }
             }
         }
     }

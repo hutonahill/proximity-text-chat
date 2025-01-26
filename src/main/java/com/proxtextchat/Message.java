@@ -3,6 +3,7 @@ package com.proxtextchat;
 import com.proxtextchat.network.NetworkNode;
 import net.minecraft.entity.Entity;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -40,8 +41,12 @@ public class Message {
         Trace = trace;
     }
 
-    public Text getMessage() {
+    public Text getMessageContent(){
         return Message;
+    }
+
+    public Text getMessage() {
+        return Text.literal("[" + Alias + "] ").formatted(Formatting.GOLD).append(Message);
     }
 
     public Entity getTrueSender() {
