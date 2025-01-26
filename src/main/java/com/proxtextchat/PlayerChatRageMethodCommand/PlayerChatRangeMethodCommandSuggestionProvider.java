@@ -20,12 +20,10 @@ public class PlayerChatRangeMethodCommandSuggestionProvider implements Suggestio
 
         Set<Identifier> possible = ChatRangeRegistry.getKeys();
 
-        @SuppressWarnings("UnnecessaryLocalVariable") CompletableFuture<Suggestions> output = CommandSource.suggestMatching(
+        return CommandSource.suggestMatching(
             possible.stream()
                 .map(Identifier::toString)
                 .filter(id -> builder.getRemaining().isEmpty() || CommandSource.shouldSuggest(builder.getRemaining(), id)),
         builder);
-
-        return output;
     }
 }

@@ -31,7 +31,6 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.GameRules;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.WorldChunk;
@@ -128,7 +127,7 @@ public class ProxChatBaseMod implements ModInitializer {
                 HashSet<NetworkNode> playerNodes = null;
                 try {
                     // get the nodes in the chunk the player is in, for the channels he user is registered to send to.
-                    playerNodes = manager.NodesInChunk(playerChunk,
+                    playerNodes = manager.NodesReceivingInChunk(playerChunk,
                             manager.getReceivingFromChannelsForPlayer(sender));
                 } catch (ChannelMismatch e) {
                     throw new RuntimeException(e);

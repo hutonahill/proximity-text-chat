@@ -25,17 +25,19 @@ This mod is not a full implementation of the linked design document, but the fou
 
 ## ToDo List:
 
-- Implement threading for populating the shortest path registries.
+### Minimum Viable Product
 - revisit storage and make sure we are storing channels properly
-- Item Tags:
-  - sendInCurios
-  - receiveInCurios
 - Add ChatRangeMethod gamerule to the Mod page
-- Add playerRange gamerule to the Mod page.
+- Add playerToPlayerRange gamerule to the Mod page.
 - Add commands for adding and removing nodes.
-- Add compatability with proximity voice chat mod.
 - add modifiable Alias property to players, default to username. (can we keep this server side?)
-- Use alias properly when generating messages from players. 
+
+### Stage Two
+- Implement threading for populating the shortest path registries.
+- Item Tags:
+- sendInCurios
+- receiveInCurios
+- Add compatability with proximity voice chat mod.
 
 
 ## Documentation
