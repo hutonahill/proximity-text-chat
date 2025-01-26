@@ -145,16 +145,12 @@ public class ProxChatBaseMod implements ModInitializer {
                 Message fomattedMessage = new Message(sender, message.getContent());
 
                 for(PlayerEntity receivingPlayer : playersInRage){
-                    // filter out offline players
-                    World world2 = receivingPlayer.getWorld();
-                    if (world2 != null && receivingPlayer.getServer() != null) {
-                        receivingPlayer.sendMessage(fomattedMessage.getMessage());
-                    }
+
+                    receivingPlayer.sendMessage(fomattedMessage.getMessage());
                 }
 
                 return false;
             }
-
 
             return true;
         });
