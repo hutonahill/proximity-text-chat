@@ -17,6 +17,7 @@ import net.fabricmc.fabric.api.gamerule.v1.GameRuleRegistry;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.minecraft.command.argument.IdentifierArgumentType;
 import net.minecraft.component.ComponentType;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.network.message.SentMessage;
 import net.minecraft.registry.Registries;
@@ -32,6 +33,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.GameRules;
+import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.WorldChunk;
 
@@ -134,10 +136,22 @@ public class ProxChatBaseMod implements ModInitializer {
                 }
 
                 for(NetworkNode node : playerNodes){
-                    manager.broadcastMessage(node, new Message(sender, sender.getName(), message.getContent()));
+                    manager.broadcastMessage(node, new Message(sender, message.getContent()));
                 }
 
-                //ToDo: PlayerToPlayer
+                int PlayerChatRange = server.getGameRules().get(PLAYER_TO_PLAYER_CHAT_RANGE).get();
+
+                Set<PlayerEntity> playersInRage = ChatRangeRegistry.Run(sender, PlayerChatRange);
+
+                Message fomattedMessage = new Message(sender, message.getContent());
+
+                for(PlayerEntity receivingPlayer : playersInRage){
+                    // filter out offline players
+                    World world2 = receivingPlayer.getWorld();
+                    if (world2 != null && receivingPlayer.getServer() != null) {
+                        receivingPlayer.sendMessage(fomattedMessage.getMessage());
+                    }
+                }
 
                 return false;
             }
