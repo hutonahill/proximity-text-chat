@@ -121,11 +121,8 @@ public class ProxChatBaseMod implements ModInitializer {
 
             if(isProximityChatEnabled){
 
-                for(ServerPlayerEntity player : world.getPlayers()){
-	               if(player.distanceTo(sender) <= server.getGameRules().getInt(ChatRangeRegistry.PLAYER_CHAT_RANGE) || player == sender)
-                       player.sendChatMessage(SentMessage.of(message), false, params);
-                }
 
+                // Player to Network chat
                 HashSet<NetworkNode> playerNodes = null;
                 try {
                     // get the nodes in the chunk the player is in, for the channels he user is registered to send to.
@@ -141,6 +138,8 @@ public class ProxChatBaseMod implements ModInitializer {
 
                 int PlayerChatRange = server.getGameRules().get(PLAYER_TO_PLAYER_CHAT_RANGE).get();
 
+
+                //Player to Player chat
                 Set<PlayerEntity> playersInRage = ChatRangeRegistry.Run(sender, PlayerChatRange);
 
                 Message fomattedMessage = new Message(sender, message.getContent());

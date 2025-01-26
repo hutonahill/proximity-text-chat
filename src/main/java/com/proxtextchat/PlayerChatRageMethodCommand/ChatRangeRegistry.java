@@ -16,13 +16,6 @@ public class ChatRangeRegistry {
 
     private ChatRangeRegistry() {}
 
-    /**
-     * A game rule key that determines the player's chat range.
-     */
-    public static final GameRules.Key<GameRules.IntRule> PLAYER_CHAT_RANGE =
-            GameRuleRegistry.register("playerChatRange", GameRules.Category.CHAT,
-                    GameRuleFactory.createIntRule(64));
-
 
     private static final Map<Identifier, PlayerChatRangeDefinition> registry = new HashMap<>();
 
