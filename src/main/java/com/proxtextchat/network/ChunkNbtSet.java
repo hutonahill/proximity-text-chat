@@ -23,8 +23,13 @@ public class ChunkNbtSet {
     private final String[] dimension;
     private static final String DimensionKey = "Dimension";
 
+    private final String idKey;
+
     // Constructor to initialize the arrays
-    public ChunkNbtSet(Set<WorldChunk> chunks){
+    public ChunkNbtSet(Set<WorldChunk> chunks, String key){
+
+        idKey = key;
+
         location = new long[chunks.size()];
         dimension = new String[chunks.size()];
 
@@ -37,12 +42,14 @@ public class ChunkNbtSet {
         }
     }
 
-    public ChunkNbtSet(NbtCompound nbt) {
+    public ChunkNbtSet(NbtCompound nbt, String key) {
+        idKey = key;
+
         // Retrieve the long array from NBT
-        location = nbt.getLongArray(LocationKey);
+        location = nbt.getLongArray(getRealKey(LocationKey));
 
         // Retrieve the string list from NBT
-        NbtList stringList = nbt.getList(DimensionKey, 8);
+        NbtList stringList = nbt.getList(getRealKey(DimensionKey), 8);
         dimension = new String[stringList.size()];
 
         // Populate the dimension array
@@ -63,8 +70,8 @@ public class ChunkNbtSet {
             StringArray.add(NbtString.of(str));
         }
 
-        nbt.put(DimensionKey, StringArray);
-        nbt.putLongArray(LocationKey, location);
+        nbt.put(getRealKey(DimensionKey), StringArray);
+        nbt.putLongArray(getRealKey(LocationKey), location);
 
     }
 
@@ -96,4 +103,11 @@ public class ChunkNbtSet {
         return output;
     }
 
+
+    private String getRealKey(String key){
+        if(idKey != null){
+            return key+idKey;
+        }
+        return key;
+    }
 }

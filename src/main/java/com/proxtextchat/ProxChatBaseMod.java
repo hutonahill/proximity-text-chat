@@ -8,6 +8,8 @@ import com.proxtextchat.PlayerChatRageMethodCommand.PlayerChatRangeDefinition;
 import com.proxtextchat.PlayerChatRageMethodCommand.PlayerChatRangeMethodCommandSuggestionProvider;
 import com.proxtextchat.PlayerChatRageMethodCommand.StandardPlayerChatRangeMethod;
 import com.proxtextchat.network.ChannelManager;
+import com.proxtextchat.network.ChannelMismatch;
+import com.proxtextchat.network.NetworkNode;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.gamerule.v1.GameRuleFactory;
@@ -15,6 +17,7 @@ import net.fabricmc.fabric.api.gamerule.v1.GameRuleRegistry;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.minecraft.command.argument.IdentifierArgumentType;
 import net.minecraft.component.ComponentType;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.network.message.SentMessage;
 import net.minecraft.registry.Registries;
@@ -30,7 +33,9 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.GameRules;
+import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.WorldChunk;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -42,8 +47,6 @@ import static net.minecraft.server.command.CommandManager.*;
 
 public class ProxChatBaseMod implements ModInitializer {
 
-    // TODO: add a game rule for this value
-    private static int chatRange = 5;
 
     public static final String MOD_ID = "proxchatbasemod";
 
@@ -60,16 +63,22 @@ public class ProxChatBaseMod implements ModInitializer {
             GameRuleFactory.createBooleanRule(false)
     );
 
+    public static final GameRules.Key<GameRules.IntRule> PLAYER_TO_PLAYER_CHAT_RANGE = GameRuleRegistry.register(
+            "playerToPlayerChatRange",
+            GameRules.Category.CHAT,
+            GameRuleFactory.createIntRule(200)
+    );
+
     public static final ComponentType<String> CHANNEL = Registry.register(
             Registries.DATA_COMPONENT_TYPE,
             id("channel"),
             ComponentType.<String>builder().codec(Codec.STRING).build()
     );
-    public static final TagKey<Item> SEND_IN_INVETORY = TagKey.of(RegistryKeys.ITEM, id("send_in_inventory"));
+    public static final TagKey<Item> SEND_IN_INVENTORY = TagKey.of(RegistryKeys.ITEM, id("send_in_inventory"));
     public static final TagKey<Item> SEND_IN_HOTBAR = TagKey.of(RegistryKeys.ITEM, id("send_in_hotbar"));
     public static final TagKey<Item> SEND_IN_HAND = TagKey.of(RegistryKeys.ITEM, id("send_in_hand"));
 
-    public static final TagKey<Item> RECEIVE_IN_INVETORY = TagKey.of(RegistryKeys.ITEM, id("receive_in_inventory"));
+    public static final TagKey<Item> RECEIVE_IN_INVENTORY = TagKey.of(RegistryKeys.ITEM, id("receive_in_inventory"));
     public static final TagKey<Item> RECEIVE_IN_HOTBAR = TagKey.of(RegistryKeys.ITEM, id("receive_in_hotbar"));
     public static final TagKey<Item> RECEIVE_IN_HAND = TagKey.of(RegistryKeys.ITEM, id("receive_in_hand"));
 
@@ -94,9 +103,15 @@ public class ProxChatBaseMod implements ModInitializer {
             dispatcher.getRoot().addChild(PlayerChatRangeMethodNode);
         });
 
+        // triggered every time a player sends a message. If the method returns false server will not deliver message.
         ServerMessageEvents.ALLOW_CHAT_MESSAGE.register((message, sender, params) -> {
             MinecraftServer server = sender.getServer();
             ServerWorld world = sender.getServerWorld();
+
+            int chunkX = sender.getChunkPos().x;
+            int chunkZ = sender.getChunkPos().z;
+
+            WorldChunk playerChunk = world.getChunk(chunkX, chunkZ);
 
             if (server == null) {
                 return false;
@@ -106,20 +121,36 @@ public class ProxChatBaseMod implements ModInitializer {
 
             if(isProximityChatEnabled){
 
-                for(ServerPlayerEntity player : world.getPlayers()){
-	               if(player.distanceTo(sender) <= server.getGameRules().getInt(ChatRangeRegistry.PLAYER_CHAT_RANGE) || player == sender)
-                       player.sendChatMessage(SentMessage.of(message), false, params);
+
+                // Player to Network chat
+                HashSet<NetworkNode> playerNodes = null;
+                try {
+                    // get the nodes in the chunk the player is in, for the channels he user is registered to send to.
+                    playerNodes = manager.NodesReceivingInChunk(playerChunk,
+                            manager.getReceivingFromChannelsForPlayer(sender));
+                } catch (ChannelMismatch e) {
+                    throw new RuntimeException(e);
                 }
 
-                for(Identifier channelId : manager.getReceivingFromChannelsForPlayer(sender)){
-                    // for each channel get the range of the channel then figure out if the player is in that chunk.
+                for(NetworkNode node : playerNodes){
+                    manager.broadcastMessage(node, new Message(sender, message.getContent()));
+                }
 
-                    // if the player is in the range of a node on the channel, broadcast from that channel.
+                int PlayerChatRange = server.getGameRules().get(PLAYER_TO_PLAYER_CHAT_RANGE).get();
+
+
+                //Player to Player chat
+                Set<PlayerEntity> playersInRage = ChatRangeRegistry.Run(sender, PlayerChatRange);
+
+                Message fomattedMessage = new Message(sender, message.getContent());
+
+                for(PlayerEntity receivingPlayer : playersInRage){
+
+                    receivingPlayer.sendMessage(fomattedMessage.getMessage());
                 }
 
                 return false;
             }
-
 
             return true;
         });
