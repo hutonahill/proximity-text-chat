@@ -10,13 +10,7 @@ base {
 	archivesName = project.archives_base_name
 }
 
-repositories {
-	// Add repositories to retrieve artifacts from in here.
-	// You should only use this when depending on other mods because
-	// Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
-	// See https://docs.gradle.org/current/userguide/declaring_repositories.html
-	// for more information about repositories.
-}
+
 
 loom {
 	splitEnvironmentSourceSets()
@@ -35,7 +29,16 @@ fabricApi {
 		client = true
 	}
 }
+repositories {
+	// Add repositories to retrieve artifacts from in here.
+	// You should only use this when depending on other mods because
+	// Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
+	// See https://docs.gradle.org/current/userguide/declaring_repositories.html
+	// for more information about repositories.
+	maven { url "https://maven.shedaniel.me/" }
+	maven { url "https://maven.terraformersmc.com/releases/" }
 
+}
 dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
@@ -45,6 +48,10 @@ dependencies {
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 	implementation 'org.jgrapht:jgrapht-core:1.5.1'
+
+	modApi("me.shedaniel.cloth:cloth-config-fabric:15.0.140") {
+		exclude(group: "net.fabricmc.fabric-api")
+	}
 	
 }
 
