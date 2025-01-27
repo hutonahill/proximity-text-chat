@@ -26,10 +26,10 @@ public class ProxChatBaseModDataGenerator implements DataGeneratorEntrypoint {
 		{
 			getOrCreateTagBuilder(ProxChatBaseMod.SEND_IN_HAND);
 			getOrCreateTagBuilder(ProxChatBaseMod.SEND_IN_HOTBAR);
-			getOrCreateTagBuilder(ProxChatBaseMod.SEND_IN_INVETORY);
+			getOrCreateTagBuilder(ProxChatBaseMod.SEND_IN_INVENTORY);
 			getOrCreateTagBuilder(ProxChatBaseMod.RECEIVE_IN_HAND);
 			getOrCreateTagBuilder(ProxChatBaseMod.RECEIVE_IN_HOTBAR);
-			getOrCreateTagBuilder(ProxChatBaseMod.RECEIVE_IN_INVETORY);
+			getOrCreateTagBuilder(ProxChatBaseMod.RECEIVE_IN_INVENTORY);
 		}
 	}
 
