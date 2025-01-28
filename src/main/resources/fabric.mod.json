@@ -3,13 +3,13 @@
 	"id": "proxchatbasemod",
 	"version": "${version}",
 	"name": "ProxChatBaseMod",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "Minecraft's chat system has always seemed a little OP. You can send messages all over the world instantly with no cost from day one.\n\nThe goal of this mod is to give developers the tools to change this.\n\nThis mod will add a gamerule allowing you to disable the traditional text chat in favor of a proximity based system with a configurable range.\n\nIt also adds a networking system that will allow other mods to crate systems that will allow players to add infrastructure to extend the range of their chats\n\nWe want to allow for the creation of systems that feel like your using regular Minecraft chat, after you do the work to set it up.",
 	"authors": [
-		"Me!"
+		"hutonahill"
 	],
 	"contact": {
 		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"sources": "https://github.com/hutonahill/proximity-text-chat"
 	},
 	"license": "CC0-1.0",
 	"icon": "assets/proxchatbasemod/icon.png",
