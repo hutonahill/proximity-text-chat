@@ -6,10 +6,13 @@ import net.minecraft.world.chunk.WorldChunk;
 
 import java.util.*;
 
+/**
+ * A node in a channel network
+ */
 public class NetworkNode {
 
     private static final List<Integer> idCounter = new ArrayList<>();
-    private final Integer ID;
+    private final int ID;
 
     private static Integer generateId(){
 
@@ -33,6 +36,11 @@ public class NetworkNode {
     private final Set<WorldChunk> Range;
 
 
+    /**
+     * @param channel The channel the node is a member of
+     * @param receivingChunks a set of chunks the node can receive chunks from.
+     * @param rangeChunks a set of chunks the node can send messages to.
+     */
     public NetworkNode(Identifier channel, Set<WorldChunk> receivingChunks, Set<WorldChunk> rangeChunks){
         if (receivingChunks.isEmpty()){
             throw new IllegalArgumentException("Must have at least one receiving chunk.");
@@ -45,6 +53,13 @@ public class NetworkNode {
         ID = generateId();
     }
 
+    /**
+     * Used when generating a NetworkNode based on NBT data
+     * @param channel  The channel the node is a member of
+     * @param receivingChunks a set of chunks the node can receive chunks from.
+     * @param chunks a set of chunks the node can send messages to.
+     * @param id A manually set ID value. ID must be unique.
+     */
     public NetworkNode(Identifier channel, Set<WorldChunk> receivingChunks, Set<WorldChunk> chunks, Integer id){
         if (idCounter.contains(id)){
             throw new IllegalArgumentException("id `" + id + "` has already been assigned");

@@ -1,5 +1,6 @@
 package com.proxtextchat.network;
 
+import io.netty.channel.ChannelId;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.chunk.WorldChunk;
@@ -141,6 +142,21 @@ public class Channel {
         ShortestPathRegistry = new HashMap<>();
 
         PopulateShortestPathRegistry();
+    }
+
+    /**
+     * same as addNode, but creates the node instead of receiving a node object.
+     * @param receivingChunks the range of chunks where the node can receive messages from
+     * @param rangeChunks the range of chunks the node can send messages to.
+     */
+    public void NewNode(Set<WorldChunk> receivingChunks, Set<WorldChunk> rangeChunks){
+        NetworkNode node = new NetworkNode(ID, receivingChunks, rangeChunks);
+
+        try {
+            AddNode(node);
+        } catch (ChannelMismatch e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**

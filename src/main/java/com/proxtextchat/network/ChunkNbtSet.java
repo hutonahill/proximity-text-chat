@@ -16,6 +16,9 @@ import net.minecraft.world.chunk.WorldChunk;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * tools for converting a set of chunks to NBT data
+ */
 public class ChunkNbtSet {
     private final long[] location;
     private static final String LocationKey = "Location";

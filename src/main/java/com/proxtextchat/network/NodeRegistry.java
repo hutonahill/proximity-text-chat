@@ -6,7 +6,7 @@ import net.minecraft.world.chunk.Chunk;
 
 import java.util.HashSet;
 
-
+// not sure what this is for...
 public class NodeRegistry extends PersistentState {
 
     private static final String DATA_NAME = "node_registry";
