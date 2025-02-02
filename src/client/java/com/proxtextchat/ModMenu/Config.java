@@ -6,7 +6,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.util.StringRepresentable;
+import net.minecraft.util.StringIdentifiable;
 import org.jetbrains.annotations.NotNull;
 
 import com.proxtextchat.ProxChatBaseModClient;
@@ -70,11 +70,11 @@ public class Config {
         }
     }
 
-    public enum ShardRenderStyle implements StringRepresentable {
+    public enum ShardRenderStyle implements StringIdentifiable {
         ANIMATED("animated"),
         ROTATION("rotated");
 
-        public static final Codec<ShardRenderStyle> CODEC = StringRepresentable.fromEnum(ShardRenderStyle::values);
+        public static final Codec<ShardRenderStyle> CODEC = StringIdentifiable.createCodec(ShardRenderStyle::values);
         private final String name;
 
         ShardRenderStyle(final String name) {
@@ -82,7 +82,8 @@ public class Config {
         }
 
         @Override
-        public @NotNull String getSerializedName() {
+        public String asString()
+        {
             return this.name;
         }
     }

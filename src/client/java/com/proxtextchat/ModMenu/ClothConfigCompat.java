@@ -25,7 +25,7 @@ public class ClothConfigCompat implements ClothConfigCompatBase {
                 ProxChatBaseModClient.config.getStyle()
             ).setDefaultValue(Config.DEFAULT_STYLE)
             .setEnumNameProvider((e) -> ProxChatBaseModClient.translatable(
-                    "config.shard_render_style." + ((Config.ShardRenderStyle)e).getSerializedName())
+                    "config.shard_render_style." + ((Config.ShardRenderStyle)e).name())
             )
             .setTooltip(ProxChatBaseModClient.translatable("config.shard_render_style.ttp"))
             .setSaveConsumer((style) -> ProxChatBaseModClient.config.setStyle(style))
