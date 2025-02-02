@@ -26,18 +26,21 @@ This mod is not a full implementation of the linked design document, but the fou
 ## ToDo List:
 
 ### Minimum Viable Product
-- revisit storage and make sure we are storing channels properly
-- Add ChatRangeMethod gamerule to the Mod page
+- revisit storage and make sure we are storing channels properly.
+- Add ChatRangeMethod to the Mod page
 - Add playerToPlayerRange gamerule to the Mod page.
 - Add commands for adding and removing nodes.
 - add modifiable Alias property to players, default to username. (can we keep this server side?)
 
-### Stage Two
+### Possible Additional Features
 - Implement threading for populating the shortest path registries.
 - Item Tags:
   - sendInCurios
   - receiveInCurios
 - Add compatability with proximity voice chat mod.
+- Some way to Visually see the chunks within a node.
+- Support for Xero's World Map and viewing node channel ranges
+- Support for Journey Map and viewing node channel ranges
 
 
 ## Documentation
