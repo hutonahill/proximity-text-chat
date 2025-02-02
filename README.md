@@ -27,6 +27,8 @@ This mod is not a full implementation of the linked design document, but the fou
 
 ### Minimum Viable Product
 - revisit storage and make sure we are storing channels properly.
+
+### Phase Two
 - Add ChatRangeMethod to the Mod page
 - Add playerToPlayerRange gamerule to the Mod page.
 - Add commands for adding and removing nodes.

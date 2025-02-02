@@ -38,8 +38,8 @@ import net.minecraft.world.chunk.WorldChunk;
 
 
 import java.util.HashSet;
-import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.function.Function;
 
 
 import static net.minecraft.server.command.CommandManager.*;
@@ -48,6 +48,11 @@ import static net.minecraft.server.command.CommandManager.*;
 
 public class ProxChatBaseMod implements ModInitializer {
 
+    /**
+     * The method the system will use to determine the Alias of the player.
+     * Replace this if you're using an Alias system
+     */
+    public static Function<ServerPlayerEntity, Text> getAlias = ProxChatBaseMod::AliasIsName;
 
     public static final String MOD_ID = "proxchatbasemod";
 
@@ -143,7 +148,7 @@ public class ProxChatBaseMod implements ModInitializer {
                 //Player to Player chat
                 Set<PlayerEntity> playersInRage = ChatRangeRegistry.Run(sender, PlayerChatRange);
 
-                Message fomattedMessage = new Message(sender, message.getContent());
+                Message fomattedMessage = new Message(sender, getAlias.apply(sender), message.getContent());
 
                 for(PlayerEntity receivingPlayer : playersInRage){
 
@@ -196,6 +201,15 @@ public class ProxChatBaseMod implements ModInitializer {
     public static Identifier id(String path)
     {
         return Identifier.of(MOD_ID, path);
+    }
+
+    /**
+     * default method for determining alias. Returns the players name.
+     * @param player The Player you want ot get the alias of
+     * @return the alias of the target player
+     */
+    public static Text AliasIsName(ServerPlayerEntity player){
+        return player.getName();
     }
 
 }
