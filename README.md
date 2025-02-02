@@ -35,10 +35,13 @@ This mod is not a full implementation of the linked design document, but the fou
   - `/AddNode <channelIdentifier> <setOfReceaveChunks> <setOfRangeChunks>` 
     - Returns node ID
   - `/RemoveNode <Id> <optionalChannelIdentifier>`
-  - `/TriggerMessage <Id> <quotedMessageContent> <optionalAlius>`
+    - removes a node
+  - `/DirectMessage <sourceNodeId> <destinationNodeId> <quotedMessageContent> <optionalAlius>`
+    - Sends a message from one node to another
+  - `/BraoudcastMessage <sourceNodeId> <quotedMessageContent> <optionalAlius>`
+    - sends a message to all nodes connected to the source node.
   - `/GetNodeList <optionalChannelIdentifier>` 
     - returns a list of nodes and the chunks they cover, optionally restricted to a channel.
-- add modifiable Alias property to players, default to username. (can we keep this server side?)
 
 ### Possible Additional Features
 - Implement threading for populating the shortest path registries.
