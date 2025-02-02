@@ -12,9 +12,9 @@ public class ClothConfigCompat implements ClothConfigCompatBase {
     @Override
     public Screen getConfigScreen(Screen parent) {
         ConfigBuilder builder = ConfigBuilder.create()
-                .setParentScreen(parent)
-                .setTitle(Text.translatable(""))
-                .setSavingRunnable(() -> ProxChatBaseModClient.config.save(ProxChatBaseModClient.configFile));
+            .setParentScreen(parent)
+            .setTitle(Text.translatable(""))
+            .setSavingRunnable(() -> ProxChatBaseModClient.config.save(ProxChatBaseModClient.configFile));
         ConfigEntryBuilder entryBuilder = builder.entryBuilder();
 
         ConfigCategory general = builder.getOrCreateCategory(Text.empty()); // doesn't show when there's only 1 category anyway
@@ -32,12 +32,12 @@ public class ClothConfigCompat implements ClothConfigCompatBase {
             .build()
         );
         general.addEntry(entryBuilder.startBooleanToggle(
-                        ProxChatBaseModClient.translatable("config.music_turnoff"),
-                        ProxChatBaseModClient.config.getShouldStopSound()
-                        ).setDefaultValue(Config.DEFAULT_MUSIC_TURNOFF)
-                        .setTooltip(ProxChatBaseModClient.translatable("config.music_turnoff.ttp"))
-                        .setSaveConsumer((musicTurnoff) -> ProxChatBaseModClient.config.setShouldStopSound(musicTurnoff))
-                        .build()
+                ProxChatBaseModClient.translatable("config.music_turnoff"),
+                ProxChatBaseModClient.config.getShouldStopSound()
+            ).setDefaultValue(Config.DEFAULT_MUSIC_TURNOFF)
+            .setTooltip(ProxChatBaseModClient.translatable("config.music_turnoff.ttp"))
+            .setSaveConsumer((musicTurnoff) -> ProxChatBaseModClient.config.setShouldStopSound(musicTurnoff))
+            .build()
         );
 
         return builder.build();

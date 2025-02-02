@@ -2,12 +2,17 @@ package com.proxtextchat;
 
 import com.proxtextchat.ModMenu.ClothConfigCompat;
 import com.proxtextchat.ModMenu.ClothConfigCompatBase;
+import com.proxtextchat.ModMenu.Config;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
+import java.io.File;
 import java.util.ServiceLoader;
 
 /**
@@ -23,9 +28,12 @@ public class ProxChatBaseModClient implements ClientModInitializer {
 	}
 
 	public static Config config;
+	public static File configFile;
+
+	public static final Logger logger = LoggerFactory.getLogger("Proximity Text Chat");
 
 
-	public static MutableComponent translatable(String path) {
+	public static MutableText translatable(String path) {
 		return Text.translatable(MOD_ID + "." + path);
 	}
 
@@ -41,6 +49,11 @@ public class ProxChatBaseModClient implements ClientModInitializer {
 	}
 
 
+	/**
+	 * Checks if a mod is loaded
+	 * @param id The id of the mod
+	 * @return weather or not the mod is loaded
+	 */
 	public static boolean isModLoaded(String id) {
 		return FabricLoader.getInstance().isModLoaded(id);
 	}
