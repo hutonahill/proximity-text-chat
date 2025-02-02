@@ -27,11 +27,17 @@ This mod is not a full implementation of the linked design document, but the fou
 
 ### Minimum Viable Product
 - revisit storage and make sure we are storing channels properly.
-
-### Phase Two
 - Add ChatRangeMethod to the Mod page
 - Add playerToPlayerRange gamerule to the Mod page.
-- Add commands for adding and removing nodes.
+
+### Phase Two
+- Add commands:
+  - `/AddNode <channelIdentifier> <setOfReceaveChunks> <setOfRangeChunks>` 
+    - Returns node ID
+  - `/RemoveNode <Id> <optionalChannelIdentifier>`
+  - `/TriggerMessage <Id> <quotedMessageContent> <optionalAlius>`
+  - `/GetNodeList <optionalChannelIdentifier>` 
+    - returns a list of nodes and the chunks they cover, optionally restricted to a channel.
 - add modifiable Alias property to players, default to username. (can we keep this server side?)
 
 ### Possible Additional Features
