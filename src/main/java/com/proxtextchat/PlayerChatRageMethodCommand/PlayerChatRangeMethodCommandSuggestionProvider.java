@@ -13,6 +13,9 @@ import net.minecraft.util.Identifier;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * This class handles providing suggestions the PlayerChatRangeMethod command.
+ */
 public class PlayerChatRangeMethodCommandSuggestionProvider implements SuggestionProvider<ServerCommandSource> {
     @Override
     public CompletableFuture<Suggestions> getSuggestions(CommandContext<ServerCommandSource> context, SuggestionsBuilder builder){

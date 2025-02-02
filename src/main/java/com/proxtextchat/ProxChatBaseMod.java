@@ -19,7 +19,6 @@ import net.minecraft.command.argument.IdentifierArgumentType;
 import net.minecraft.component.ComponentType;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
-import net.minecraft.network.message.SentMessage;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryKeys;
@@ -33,11 +32,13 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.GameRules;
-import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.WorldChunk;
 
+
+
 import java.util.HashSet;
+import java.util.ServiceLoader;
 import java.util.Set;
 
 
@@ -196,4 +197,5 @@ public class ProxChatBaseMod implements ModInitializer {
     {
         return Identifier.of(MOD_ID, path);
     }
+
 }

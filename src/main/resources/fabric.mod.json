@@ -18,6 +18,9 @@
 		"main": [
 			"com.proxtextchat.ProxChatBaseMod"
 		],
+		"modmenu": [
+			"com.proxtextchat.ModMenu.ModMenuCompat"
+		],
 		"client": [
 			"com.proxtextchat.ProxChatBaseModClient"
 		],

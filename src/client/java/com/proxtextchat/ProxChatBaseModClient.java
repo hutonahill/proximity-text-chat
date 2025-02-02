@@ -1,33 +1,47 @@
 package com.proxtextchat;
 
-import me.shedaniel.clothconfig2.api.ConfigBuilder;
-import me.shedaniel.clothconfig2.api.ConfigEntryBuilder;
+import com.proxtextchat.ModMenu.ClothConfigCompat;
+import com.proxtextchat.ModMenu.ClothConfigCompatBase;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
+
+
+import java.util.ServiceLoader;
 
 /**
  * main class for the client.
  */
 public class ProxChatBaseModClient implements ClientModInitializer {
+
+	public static final String MOD_ID = "proxchatbasemod";
+
 	@Override
 	public void onInitializeClient() {
-		/*ConfigBuilder builder = ConfigBuilder.create()
-				.setParentScreen(*//*need to figure out how to get the partent screen. where ever that is.*//*)
-				.setTitle(Text.literal("Proximity Chat Base Mod Configuration"));
 
-		builder.setSavingRunnable(() -> {
-			// This should be code to read the config the used made and modify the game rules/server config.
-			// This means we can safely disable the ClothConfig without losing functionality.
-		});
+	}
 
-		ConfigEntryBuilder entryBuilder = builder.entryBuilder();
+	public static Config config;
 
-		// documentation is not clear on what general is
-		general.addEntry(entryBuilder.startStrField(new TranslatableText("option.examplemod.optionA"), currentValue)
-				// still not sure what this is. does it mean that
-				.setDefaultValue("This is the default value") // Recommended: Used when user click "Reset"
-				.setTooltip(new TranslatableText("This option is awesome!")) // Optional: Shown when the user hover over this option
-				.setSaveConsumer(newValue -> currentValue = newValue) // Recommended: Called when user save the config
-				.build()); // Builds the option entry for cloth config*/
+
+	public static MutableComponent translatable(String path) {
+		return Text.translatable(MOD_ID + "." + path);
+	}
+
+	public static Screen getConfigScreen(Screen parent) {
+		if (isModLoaded("cloth_config") || isModLoaded("cloth-config")) {
+			ServiceLoader<ClothConfigCompatBase> loader = ServiceLoader.load(ClothConfigCompatBase.class);
+			if (loader.findFirst().isEmpty()) {
+				//huh??
+				return null;
+			}
+			return loader.findFirst().get().getConfigScreen(parent);
+		} else return null;
+	}
+
+
+	public static boolean isModLoaded(String id) {
+		return FabricLoader.getInstance().isModLoaded(id);
 	}
 }

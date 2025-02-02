@@ -1,11 +1,8 @@
 package com.proxtextchat.PlayerChatRageMethodCommand;
 
-import net.fabricmc.fabric.api.gamerule.v1.GameRuleFactory;
-import net.fabricmc.fabric.api.gamerule.v1.GameRuleRegistry;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
-import net.minecraft.world.GameRules;
 
 import java.util.*;
 
