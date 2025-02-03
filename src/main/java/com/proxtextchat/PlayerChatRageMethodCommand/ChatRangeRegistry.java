@@ -14,7 +14,7 @@ public class ChatRangeRegistry {
     private ChatRangeRegistry() {}
 
 
-    private static final Map<Identifier, PlayerChatRangeDefinition> registry = new HashMap<>();
+    public static final Map<Identifier, PlayerChatRangeDefinition> registry = new HashMap<>();
 
 
     private static PlayerChatRangeDefinition CurrentMethod;

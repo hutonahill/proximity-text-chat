@@ -6,10 +6,12 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import com.proxtextchat.PlayerChatRageMethodCommand.ChatRangeRegistry;
 import com.proxtextchat.PlayerChatRageMethodCommand.PlayerChatRangeDefinition;
 
 import com.proxtextchat.PlayerChatRageMethodCommand.StandardPlayerChatRangeMethod;
 import com.proxtextchat.ProxChatBaseModClient;
+import net.minecraft.util.Identifier;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,11 +27,13 @@ public class Config {
     public static final Codec<Config> CODEC = RecordCodecBuilder.create((instance) ->
             instance.group(
                     Codec.INT.optionalFieldOf("player_chat_range", DEFAULT_PLAYER_TO_PLAYER_CHAT_RANGE).forGetter(Config::getPlayerChatRange),
-                    Codec.BOOL.optionalFieldOf("musicTurnoff", DEFAULT_CHAT_METHOD).forGetter(Config::getChatRangeDefinition)
+                    Codec.STRING.optionalFieldOf("player_chat_range_definition", DEFAULT_CHAT_METHOD.getID().toString()).forGetter(Config::getChatRangeDefinition)
+
             ).apply(instance, Config::new));
 
-    public Config(Integer playerChatRange, boolean chatRangeDefinition) {
+    public Config(Integer playerChatRange, String chatRangeDefinitionIdString) {
         this.playerChatRange = playerChatRange;
+        this.chatRangeDefinition = ChatRangeRegistry.registry.get(Identifier.of(chatRangeDefinitionIdString));
     }
 
     public Config() {
@@ -44,8 +48,8 @@ public class Config {
         this.playerChatRange = playerChatRange;
     }
 
-    public PlayerChatRangeDefinition getChatRangeDefinition() {
-        return chatRangeDefinition;
+    public String getChatRangeDefinition() {
+        return chatRangeDefinition.getID().toString();
     }
 
     public void setChatRangeDefinition(PlayerChatRangeDefinition chatRangeDefinition) {
