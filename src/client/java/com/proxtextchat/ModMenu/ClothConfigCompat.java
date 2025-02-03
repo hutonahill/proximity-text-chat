@@ -33,10 +33,10 @@ public class ClothConfigCompat implements ClothConfigCompatBase {
         );
         general.addEntry(entryBuilder.startBooleanToggle(
                 ProxChatBaseModClient.translatable("config.music_turnoff"),
-                ProxChatBaseModClient.config.getShouldStopSound()
-            ).setDefaultValue(Config.DEFAULT_MUSIC_TURNOFF)
+                ProxChatBaseModClient.config.getChatRangeDefinition()
+            ).setDefaultValue(Config.DEFAULT_CHAT_METHOD)
             .setTooltip(ProxChatBaseModClient.translatable("config.music_turnoff.ttp"))
-            .setSaveConsumer((musicTurnoff) -> ProxChatBaseModClient.config.setShouldStopSound(musicTurnoff))
+            .setSaveConsumer((musicTurnoff) -> ProxChatBaseModClient.config.setChatRangeDefinition(musicTurnoff))
             .build()
         );
 
