@@ -11,13 +11,16 @@ import com.proxtextchat.PlayerChatRageMethodCommand.PlayerChatRangeDefinition;
 
 import com.proxtextchat.PlayerChatRageMethodCommand.StandardPlayerChatRangeMethod;
 import com.proxtextchat.ProxChatBaseModClient;
+import me.shedaniel.autoconfig.ConfigData;
 import net.minecraft.util.Identifier;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 
-public class Config {
+@me.shedaniel.autoconfig.annotation.Config(name = "proximity_text_chat")
+public class Config implements ConfigData
+{
     public static final Integer DEFAULT_PLAYER_TO_PLAYER_CHAT_RANGE = 64;
     public static final PlayerChatRangeDefinition DEFAULT_CHAT_METHOD = StandardPlayerChatRangeMethod.getInstance();
 
