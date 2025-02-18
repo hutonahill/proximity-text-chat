@@ -85,7 +85,7 @@ public class NetworkNode {
      * @param nbt The NBT command containing the data.
      * @param server The server the Chunks reside in.
      */
-    public NetworkNode(@NotNull NbtCompound nbt, MinecraftServer server){
+    public NetworkNode(@NotNull NbtCompound nbt, @NotNull MinecraftServer server){
         Range = new WorldChunkSetNbt(nbt, RangeKey, server);
         ReceivingChunks = new WorldChunkSetNbt(nbt, ReceivingKey, server);
         ChannelId = Identifier.of(nbt.getString(ChannelKey));

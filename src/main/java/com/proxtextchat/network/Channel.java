@@ -2,6 +2,8 @@ package com.proxtextchat.network;
 
 import io.netty.channel.ChannelId;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.chunk.WorldChunk;
 import org.jetbrains.annotations.NotNull;
@@ -88,6 +90,14 @@ public class Channel {
 
             }
         }
+    }
+
+    public Channel(NbtCompound nbt, MinecraftServer server){
+
+    }
+
+    public NbtCompound toNbt(NbtCompound nbt){
+
     }
 
     /**

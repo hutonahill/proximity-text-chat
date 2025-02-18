@@ -50,6 +50,17 @@ public class WorldChunkSetNbt extends AbstractSet<WorldChunk> {
      * @param nbt The NBT command containing the data for the Chunk Set
      * @param key The Key identifying the Chunk Set
      * @param server The server where the Chunks in the Set reside.
+     * @return a new WorldChunkSetNbt Object.
+     */
+    public static WorldChunkSetNbt fromNBT(NbtCompound nbt, String key, MinecraftServer server){
+        return new WorldChunkSetNbt(nbt, key, server);
+    }
+
+    /**
+     * For extracting a WorldChunk set from an NBT Command.
+     * @param nbt The NBT command containing the data for the Chunk Set
+     * @param key The Key identifying the Chunk Set
+     * @param server The server where the Chunks in the Set reside.
      */
     public WorldChunkSetNbt(NbtCompound nbt, String key, MinecraftServer server) {
         idKey = key;
