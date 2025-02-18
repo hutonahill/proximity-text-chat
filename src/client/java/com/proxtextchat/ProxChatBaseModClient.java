@@ -22,15 +22,13 @@ public class ProxChatBaseModClient implements ClientModInitializer {
 
 	public static final String MOD_ID = "proxchatbasemod";
 
-	@Override
-	public void onInitializeClient() {
-
-	}
-
 	public static Config config;
 	public static File configFile;
-
 	public static final Logger logger = LoggerFactory.getLogger("Proximity Text Chat");
+	@Override
+	public void onInitializeClient() {
+		config = new Config(Config.DEFAULT_PLAYER_TO_PLAYER_CHAT_RANGE, Config.DEFAULT_CHAT_METHOD.getID().toString());
+	}
 
 
 	public static MutableText translatable(String path) {
@@ -38,14 +36,16 @@ public class ProxChatBaseModClient implements ClientModInitializer {
 	}
 
 	public static Screen getConfigScreen(Screen parent) {
-		if (isModLoaded("cloth_config") || isModLoaded("cloth-config")) {
+		ServiceLoader<ClothConfigCompatBase> loader = ServiceLoader.load(ClothConfigCompatBase.class);
+		return loader.findFirst().get().getConfigScreen(parent);
+		/*if (isModLoaded("cloth_config") || isModLoaded("cloth-config") || isModLoaded("cloth-config")) {
 			ServiceLoader<ClothConfigCompatBase> loader = ServiceLoader.load(ClothConfigCompatBase.class);
 			if (loader.findFirst().isEmpty()) {
 				//huh??
 				return null;
 			}
 			return loader.findFirst().get().getConfigScreen(parent);
-		} else return null;
+		} else return null;*/
 	}
 
 

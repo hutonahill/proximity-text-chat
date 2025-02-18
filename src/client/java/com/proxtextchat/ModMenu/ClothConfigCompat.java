@@ -14,7 +14,7 @@ public class ClothConfigCompat implements ClothConfigCompatBase {
     public Screen getConfigScreen(Screen parent) {
         ConfigBuilder builder = ConfigBuilder.create()
             .setParentScreen(parent)
-            .setTitle(Text.translatable(""))
+            .setTitle(Text.translatable("proximity_text_chat"))
             .setSavingRunnable(() -> ProxChatBaseModClient.config.save(ProxChatBaseModClient.configFile));
         ConfigEntryBuilder entryBuilder = builder.entryBuilder();
 
