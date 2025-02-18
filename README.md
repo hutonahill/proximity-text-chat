@@ -1,7 +1,7 @@
 # Proximity Text Chat
 
 ## Goal
-Minecraft's chat system has always seemed a little OP. 
+Minecraft's chat system has always seemed a little overpowered. 
 You can send messages all over the world instantly with no cost from day one.
 
 The goal of this mod is to give developers the tools to change this.
@@ -55,7 +55,6 @@ This mod is not a full implementation of the linked design document, but the fou
 
 
 ## Documentation
-
 This mod adds a system of networks with nodes (channels) A node is composed of a set of `WorldChunks` 
 which it can send messages to and a set of `WorldChunks` it can receive messages from. This creates a 
 network you can send messages though using methods in `ChannelManager`. Messages contain the text of 
@@ -65,21 +64,24 @@ to its destination.
 This section will be rewritten as the mod gets closer to completion.
 
 ## License
-
 This project is licensed under the GNU Lesser General Public License v3.0 (LGPL-3.0).
 
 The LGPL allows you to:
-- Use this code freely in your own projects, including proprietary ones, as long as you dynamically link to it.
+- Use this code freely in your own projects, including proprietary ones, as long as you 
+dynamically link to it.
 - Modify and redistribute this code under the same LGPL license.
 - Share improvements and changes to this code with the community.
 
 For full details, see the [LICENSE](LICENSE) file.
 
 ## Structure
-
 We generated the file structure using [this](https://fabricmc.net/develop/template/) 
 tool.
 We are using it under the CC0 license.
+
+## Thanks
+Many thanks to DeltaHelios, Parzi, and many people on the fabric discord for helping me 
+develop my first mod! There is no way I could do this alone!
 
 ## Activity
 

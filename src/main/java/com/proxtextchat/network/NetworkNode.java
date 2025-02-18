@@ -1,8 +1,11 @@
 package com.proxtextchat.network;
 
 
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.chunk.WorldChunk;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
@@ -13,6 +16,7 @@ public class NetworkNode {
 
     private static final List<Integer> idCounter = new ArrayList<>();
     private final int ID;
+    private static final String IDKey ="ID";
 
     private static Integer generateId(){
 
@@ -29,11 +33,14 @@ public class NetworkNode {
             }
         }
     }
-    private final Set<WorldChunk> ReceivingChunks;
+    private final WorldChunkSetNbt ReceivingChunks;
+    private static final String ReceivingKey = "Location";
 
     private final Identifier ChannelId;
+    private static final String ChannelKey = "Channel";
 
-    private final Set<WorldChunk> Range;
+    private final WorldChunkSetNbt Range;
+    private static final String RangeKey = "Range";
 
 
     /**
@@ -47,8 +54,8 @@ public class NetworkNode {
         }
 
         ChannelId = channel;
-        ReceivingChunks = receivingChunks;
-        Range = rangeChunks;
+        ReceivingChunks = new WorldChunkSetNbt(receivingChunks, ReceivingKey);
+        Range = new WorldChunkSetNbt(rangeChunks, RangeKey);
 
         ID = generateId();
     }
@@ -69,8 +76,20 @@ public class NetworkNode {
         idCounter.add(id);
 
         ChannelId = channel;
-        ReceivingChunks = receivingChunks;
-        Range = chunks;
+        ReceivingChunks = new WorldChunkSetNbt(receivingChunks, ReceivingKey);
+        Range = new WorldChunkSetNbt(chunks, RangeKey);
+    }
+
+    /**
+     * For extracting a NetworkNode from NBT data.
+     * @param nbt The NBT command containing the data.
+     * @param server The server the Chunks reside in.
+     */
+    public NetworkNode(@NotNull NbtCompound nbt, MinecraftServer server){
+        Range = new WorldChunkSetNbt(nbt, RangeKey, server);
+        ReceivingChunks = new WorldChunkSetNbt(nbt, ReceivingKey, server);
+        ChannelId = Identifier.of(nbt.getString(ChannelKey));
+        ID = nbt.getInt(IDKey);
     }
 
     public Set<WorldChunk> getReceivingChunks() {
@@ -86,6 +105,22 @@ public class NetworkNode {
     }
 
     public Integer getID(){ return ID;}
+
+
+    /**
+     * @param nbt the NBT command you wish to add the NetworkNode to
+     * @return the NBT command with the networkNode added
+     */
+    public NbtCompound toNbt(NbtCompound nbt){
+
+        ReceivingChunks.toNBT(nbt);
+        nbt.putString(ChannelKey, ChannelId.toString());
+        Range.toNBT(nbt);
+
+        nbt.putInt(IDKey, ID);
+        return nbt;
+
+    }
 }
 
 

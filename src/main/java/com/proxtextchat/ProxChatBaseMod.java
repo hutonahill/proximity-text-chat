@@ -19,6 +19,8 @@ import net.minecraft.command.argument.IdentifierArgumentType;
 import net.minecraft.component.ComponentType;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
+import net.minecraft.network.message.MessageType;
+import net.minecraft.network.message.SignedMessage;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryKeys;
@@ -62,7 +64,7 @@ public class ProxChatBaseMod implements ModInitializer {
 
     private static final ChannelManager manager = ChannelManager.Instance;
 
-    //TODO: this should be a mod page button or a config option.
+
     public static final GameRules.Key<GameRules.BooleanRule> ENABLE_PROXIMITY_TEXT_CHAT = GameRuleRegistry.register(
             "enableProximityTextChat",
             GameRules.Category.CHAT,
@@ -88,6 +90,57 @@ public class ProxChatBaseMod implements ModInitializer {
     public static final TagKey<Item> RECEIVE_IN_HOTBAR = TagKey.of(RegistryKeys.ITEM, id("receive_in_hotbar"));
     public static final TagKey<Item> RECEIVE_IN_HAND = TagKey.of(RegistryKeys.ITEM, id("receive_in_hand"));
 
+    private static boolean AllowChatMessageRule(SignedMessage message, ServerPlayerEntity sender,
+                                                MessageType.Parameters params){
+        MinecraftServer server = sender.getServer();
+        ServerWorld world = sender.getServerWorld();
+
+        int chunkX = sender.getChunkPos().x;
+        int chunkZ = sender.getChunkPos().z;
+
+        WorldChunk playerChunk = world.getChunk(chunkX, chunkZ);
+
+        if (server == null) {
+            return false;
+        }
+
+        boolean isProximityChatEnabled = server.getGameRules().get(ENABLE_PROXIMITY_TEXT_CHAT).get();
+
+        if(isProximityChatEnabled){
+
+
+            // Player to Network chat
+            HashSet<NetworkNode> playerNodes = null;
+            try {
+                // get the nodes in the chunk the player is in, for the channels he user is registered to send to.
+                playerNodes = manager.NodesReceivingInChunk(playerChunk,
+                        manager.getReceivingFromChannelsForPlayer(sender));
+            } catch (ChannelMismatch e) {
+                throw new RuntimeException(e);
+            }
+
+            for(NetworkNode node : playerNodes){
+                manager.broadcastMessage(node, new Message(sender, message.getContent()));
+            }
+
+            int PlayerChatRange = server.getGameRules().get(PLAYER_TO_PLAYER_CHAT_RANGE).get();
+
+
+            //Player to Player chat
+            Set<PlayerEntity> playersInRage = ChatRangeRegistry.Run(sender, PlayerChatRange);
+
+            Message fomattedMessage = new Message(sender, getAlias.apply(sender), message.getContent());
+
+            for(PlayerEntity receivingPlayer : playersInRage){
+
+                receivingPlayer.sendMessage(fomattedMessage.getMessage());
+            }
+
+            return false;
+        }
+
+        return true;
+    }
 
     @Override
     public void onInitialize() {
@@ -110,56 +163,7 @@ public class ProxChatBaseMod implements ModInitializer {
         });
 
         // triggered every time a player sends a message. If the method returns false server will not deliver message.
-        ServerMessageEvents.ALLOW_CHAT_MESSAGE.register((message, sender, params) -> {
-            MinecraftServer server = sender.getServer();
-            ServerWorld world = sender.getServerWorld();
-
-            int chunkX = sender.getChunkPos().x;
-            int chunkZ = sender.getChunkPos().z;
-
-            WorldChunk playerChunk = world.getChunk(chunkX, chunkZ);
-
-            if (server == null) {
-                return false;
-            }
-
-            boolean isProximityChatEnabled = server.getGameRules().get(ENABLE_PROXIMITY_TEXT_CHAT).get();
-
-            if(isProximityChatEnabled){
-
-
-                // Player to Network chat
-                HashSet<NetworkNode> playerNodes = null;
-                try {
-                    // get the nodes in the chunk the player is in, for the channels he user is registered to send to.
-                    playerNodes = manager.NodesReceivingInChunk(playerChunk,
-                            manager.getReceivingFromChannelsForPlayer(sender));
-                } catch (ChannelMismatch e) {
-                    throw new RuntimeException(e);
-                }
-
-                for(NetworkNode node : playerNodes){
-                    manager.broadcastMessage(node, new Message(sender, message.getContent()));
-                }
-
-                int PlayerChatRange = server.getGameRules().get(PLAYER_TO_PLAYER_CHAT_RANGE).get();
-
-
-                //Player to Player chat
-                Set<PlayerEntity> playersInRage = ChatRangeRegistry.Run(sender, PlayerChatRange);
-
-                Message fomattedMessage = new Message(sender, getAlias.apply(sender), message.getContent());
-
-                for(PlayerEntity receivingPlayer : playersInRage){
-
-                    receivingPlayer.sendMessage(fomattedMessage.getMessage());
-                }
-
-                return false;
-            }
-
-            return true;
-        });
+        ServerMessageEvents.ALLOW_CHAT_MESSAGE.register(ProxChatBaseMod::AllowChatMessageRule);
     }
 
     public static Set<ServerPlayerEntity> getPlayersInChunks(MinecraftServer server, Set<Chunk> chunks) {
@@ -204,7 +208,7 @@ public class ProxChatBaseMod implements ModInitializer {
     }
 
     /**
-     * default method for determining alias. Returns the players name.
+     * default method for determining alias. Returns the player's name.
      * @param player The Player you want ot get the alias of
      * @return the alias of the target player
      */
