@@ -1,6 +1,7 @@
 package com.proxtextchat.network;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
@@ -33,7 +34,7 @@ public class Channel {
 
     static{
         CODEC = RecordCodecBuilder.create(instance -> instance.group(
-                NetworkNode.CODEC.listOf().fieldOf(NodeListKey).forGetter(Channel::getNodeList)
+                NetworkNode.CODEC.listOf().fieldOf(NodeListKey).validate(Channel::ValidateNodeList).forGetter(Channel::getNodeList)
         ).apply(instance, inner-> {
             try {
                 return new Channel(inner);
@@ -41,6 +42,23 @@ public class Channel {
                 throw new RuntimeException(e);
             }
         }));
+    }
+
+    private static DataResult<List<NetworkNode>> ValidateNodeList(List<NetworkNode> nodes){
+        Identifier channel = null;
+
+        for(NetworkNode node : nodes){
+            if(channel != null){
+                if(node.getChannelId() != channel){
+                    return DataResult.error(()->"Channel mismatch in the node list. All nodes must have the same channel.");
+                }
+            }
+            else{
+                channel = node.getChannelId();
+            }
+        }
+
+        return DataResult.success(nodes);
     }
 
     private ArrayList<NetworkNode> getNodeList(){
