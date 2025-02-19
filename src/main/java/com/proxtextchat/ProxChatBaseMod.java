@@ -166,6 +166,11 @@ public class ProxChatBaseMod implements ModInitializer {
         ServerMessageEvents.ALLOW_CHAT_MESSAGE.register(ProxChatBaseMod::AllowChatMessageRule);
     }
 
+    /**
+     * @param server The server where the chunks and players are.
+     * @param chunks The chunks you wish to search.
+     * @return a set of players in the specified chunks
+     */
     public static Set<ServerPlayerEntity> getPlayersInChunks(MinecraftServer server, Set<Chunk> chunks) {
         Set<ServerPlayerEntity> playersInChunks = new HashSet<>();
 

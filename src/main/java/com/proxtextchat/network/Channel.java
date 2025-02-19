@@ -1,15 +1,16 @@
 package com.proxtextchat.network;
 
-import io.netty.channel.ChannelId;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.Identifier;
-import net.minecraft.world.chunk.WorldChunk;
 import org.jetbrains.annotations.NotNull;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DirectedMultigraph;
 
+import java.lang.reflect.Array;
 import java.util.*;
 
 /**
@@ -18,13 +19,37 @@ import java.util.*;
 public class Channel {
     private final DirectedMultigraph<NetworkNode, DefaultEdge> Graph = new DirectedMultigraph<>(DefaultEdge.class);
 
-    private final HashMap<WorldChunk, HashSet<NetworkNode>> NodeReceivingRegistry = new HashMap<>();
+    private final HashMap<ChunkReferance, HashSet<NetworkNode>> NodeReceivingRegistry = new HashMap<>();
 
     private final HashSet<PlayerEntity> ReceiveFromPlayerRegistry = new HashSet<>();
 
     private final HashSet<PlayerEntity> SendToPlayerRegistry = new HashSet<>();
 
     private Identifier ID = null;
+
+    private static final String NodeListKey = "NodeList";
+
+    public static final Codec<Channel> CODEC;
+
+    static{
+        CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                NetworkNode.CODEC.listOf().fieldOf(NodeListKey).forGetter(Channel::getNodeList)
+        ).apply(instance, inner-> {
+            try {
+                return new Channel(inner);
+            } catch (ChannelMismatch e) {
+                throw new RuntimeException(e);
+            }
+        }));
+    }
+
+    private ArrayList<NetworkNode> getNodeList(){
+        return new ArrayList<>(Graph.vertexSet());
+    }
+
+    public Channel(Collection<NetworkNode> nodes) throws ChannelMismatch {
+        this(new HashSet<>(nodes));
+    }
 
     /**
      * Constructs a Channel by adding the provided nodes to the graph and establishing connections
@@ -57,7 +82,7 @@ public class Channel {
 
             // if we haven't thrown an exception, add the node to the graph.
             Graph.addVertex();
-            for(WorldChunk chunk : node.getReceivingChunks()){
+            for(ChunkReferance chunk : node.getReceivingChunks()){
                 // Remember where the node is
                 if(!NodeReceivingRegistry.containsKey(chunk)){
                     NodeReceivingRegistry.put(chunk, new HashSet<>());
@@ -70,14 +95,14 @@ public class Channel {
 
         // determine which nodes should be connected to each other
         for (NetworkNode node1 : nodes) {
-            Set<WorldChunk> chunks = node1.getRange();
+            Set<ChunkReferance> chunks = node1.getRangeChunks();
 
-            Set<WorldChunk> intersection = new HashSet<>(chunks);
+            Set<ChunkReferance> intersection = new HashSet<>(chunks);
 
             intersection.retainAll(NodeReceivingRegistry.keySet());
 
             // loop though all the chunks in Node1
-            for (WorldChunk chunk : intersection) {
+            for (ChunkReferance chunk : intersection) {
 
                 // if there is, loop though all nodes in that chunk
                 for (NetworkNode node2 : NodeReceivingRegistry.get(chunk)){
@@ -90,14 +115,6 @@ public class Channel {
 
             }
         }
-    }
-
-    public Channel(NbtCompound nbt, MinecraftServer server){
-
-    }
-
-    public NbtCompound toNbt(NbtCompound nbt){
-
     }
 
     /**
@@ -122,7 +139,7 @@ public class Channel {
         Graph.addVertex(node);
 
         // then we establish outgoing connections from the node.
-        for (WorldChunk chunk : node.getRange()){
+        for (ChunkReferance chunk : node.getRangeChunks()){
             if (NodeReceivingRegistry.containsKey(chunk)){
                 for (NetworkNode node2 : NodeReceivingRegistry.get(chunk)){
                     Graph.addEdge(node, node2);
@@ -131,7 +148,7 @@ public class Channel {
         }
 
         //now we register the location of the node
-        for(WorldChunk chunk : node.getReceivingChunks()){
+        for(ChunkReferance chunk : node.getReceivingChunks()){
             if (!NodeReceivingRegistry.containsKey(chunk)){
                 NodeReceivingRegistry.put(chunk, new HashSet<>());
             }
@@ -143,7 +160,7 @@ public class Channel {
         // now we establish incoming connections
         for (NetworkNode node1 : Graph.vertexSet()){
             // if receiving and range have chunks in common...
-            if(!Collections.disjoint(node.getReceivingChunks(), node1.getRange())){
+            if(!Collections.disjoint(node.getReceivingChunks(), node1.getRangeChunks())){
                 Graph.addEdge(node1, node);
             }
         }
@@ -154,12 +171,19 @@ public class Channel {
         PopulateShortestPathRegistry();
     }
 
+
+
+    public void MurgeChannels(@NotNull Channel channel) throws ChannelMismatch{
+        for(NetworkNode node : channel.getNodeList()){
+            AddNode(node);
+        }
+    }
     /**
      * same as addNode, but creates the node instead of receiving a node object.
      * @param receivingChunks the range of chunks where the node can receive messages from
      * @param rangeChunks the range of chunks the node can send messages to.
      */
-    public void NewNode(Set<WorldChunk> receivingChunks, Set<WorldChunk> rangeChunks){
+    public void NewNode(Set<ChunkReferance> receivingChunks, Set<ChunkReferance> rangeChunks){
         NetworkNode node = new NetworkNode(ID, receivingChunks, rangeChunks);
 
         try {
@@ -306,7 +330,7 @@ public class Channel {
         return shortestPaths;
     }
 
-    public @NotNull Map<WorldChunk, HashSet<NetworkNode>> getNodeReceivingRegistry(){
+    public @NotNull Map<ChunkReferance, HashSet<NetworkNode>> getNodeReceivingRegistry(){
         return Collections.unmodifiableMap(NodeReceivingRegistry);
     }
 
@@ -377,6 +401,10 @@ public class Channel {
 
     public boolean isEmpty(){
         return Graph.vertexSet().isEmpty();
+    }
+
+    public Identifier getID(){
+        return ID;
     }
 }
 

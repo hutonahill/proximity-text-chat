@@ -1,5 +1,7 @@
 package com.proxtextchat.network;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.proxtextchat.Message;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
@@ -22,9 +24,32 @@ public class ChannelManager {
      */
     public static final ChannelManager Instance = new ChannelManager();
 
-    private ChannelManager(){}
+    private static final String ChannelListKey = "ChannelList";
 
     private static final HashMap<Identifier, Channel> Graphs = new HashMap<>();
+
+
+    private ChannelManager(){}
+
+    public void addChannels(Collection<Channel> channels){
+        Graphs.clear();
+        for(Channel channel : channels){
+            if(Graphs.containsKey(channel.getID())){
+                try {
+                    Graphs.get(channel.getID()).MurgeChannels(channel);
+                }
+
+                catch (ChannelMismatch e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            else{
+                Graphs.put(channel.getID(), channel);
+            }
+
+
+        }
+    }
 
     /**
      * @param node Adds a node to the ChannelManager.
@@ -108,7 +133,7 @@ public class ChannelManager {
             }
 
             // get the nodes that receive for this channel.
-            Map<WorldChunk, HashSet<NetworkNode>> nodeReceivingRegistry = Graphs.get(channel).getNodeReceivingRegistry();
+            Map<ChunkReferance, HashSet<NetworkNode>> nodeReceivingRegistry = Graphs.get(channel).getNodeReceivingRegistry();
 
             // add those nodes that receive at chunk to the output set.
             if(nodeReceivingRegistry.containsKey(chunk)){
@@ -444,7 +469,7 @@ public class ChannelManager {
                 // Retrieve the chunk from the world
                 WorldChunk playerChunk = world.getChunk(chunkX, chunkZ);
 
-                if(node.getRange().contains(playerChunk)){
+                if(node.getRangeChunks().contains(playerChunk)){
                     player.sendMessage(message.getMessage());
                 }
             }

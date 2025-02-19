@@ -1,11 +1,9 @@
 package com.proxtextchat.network;
 
 
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.server.MinecraftServer;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.util.Identifier;
-import net.minecraft.world.chunk.WorldChunk;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
@@ -17,6 +15,8 @@ public class NetworkNode {
     private static final List<Integer> idCounter = new ArrayList<>();
     private final int ID;
     private static final String IDKey ="ID";
+
+
 
     private static Integer generateId(){
 
@@ -33,31 +33,34 @@ public class NetworkNode {
             }
         }
     }
-    private final WorldChunkSetNbt ReceivingChunks;
+    private final ChunkReferenceSet ReceivingChunks;
     private static final String ReceivingKey = "Location";
 
     private final Identifier ChannelId;
     private static final String ChannelKey = "Channel";
 
-    private final WorldChunkSetNbt Range;
+    private final ChunkReferenceSet RangeChunks;
     private static final String RangeKey = "Range";
 
 
-    /**
-     * @param channel The channel the node is a member of
-     * @param receivingChunks a set of chunks the node can receive chunks from.
-     * @param rangeChunks a set of chunks the node can send messages to.
-     */
-    public NetworkNode(Identifier channel, Set<WorldChunk> receivingChunks, Set<WorldChunk> rangeChunks){
-        if (receivingChunks.isEmpty()){
-            throw new IllegalArgumentException("Must have at least one receiving chunk.");
-        }
+    public static final Codec<NetworkNode> CODEC;
 
-        ChannelId = channel;
-        ReceivingChunks = new WorldChunkSetNbt(receivingChunks, ReceivingKey);
-        Range = new WorldChunkSetNbt(rangeChunks, RangeKey);
+    static{
+        CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                Identifier.CODEC.fieldOf(ChannelKey).forGetter(NetworkNode::getChannelId),
+                ChunkReferenceSet.CODEC.fieldOf(ReceivingKey).forGetter(NetworkNode::getReceivingSet),
+                ChunkReferenceSet.CODEC.fieldOf(RangeKey).forGetter(NetworkNode::getRangeSet),
+                Codec.INT.fieldOf(IDKey).forGetter(NetworkNode::getID)
 
-        ID = generateId();
+        ).apply(instance, NetworkNode::new));
+    }
+
+    private ChunkReferenceSet getReceivingSet(){
+        return ReceivingChunks;
+    }
+
+    private ChunkReferenceSet getRangeSet(){
+        return RangeChunks;
     }
 
     /**
@@ -67,7 +70,7 @@ public class NetworkNode {
      * @param chunks a set of chunks the node can send messages to.
      * @param id A manually set ID value. ID must be unique.
      */
-    public NetworkNode(Identifier channel, Set<WorldChunk> receivingChunks, Set<WorldChunk> chunks, Integer id){
+    public NetworkNode(Identifier channel, Collection<ChunkReferance> receivingChunks, Collection<ChunkReferance> chunks, Integer id){
         if (idCounter.contains(id)){
             throw new IllegalArgumentException("id `" + id + "` has already been assigned");
         }
@@ -76,23 +79,43 @@ public class NetworkNode {
         idCounter.add(id);
 
         ChannelId = channel;
-        ReceivingChunks = new WorldChunkSetNbt(receivingChunks, ReceivingKey);
-        Range = new WorldChunkSetNbt(chunks, RangeKey);
+        ReceivingChunks = new ChunkReferenceSet(receivingChunks);
+        RangeChunks = new ChunkReferenceSet(chunks);
+    }
+
+
+
+    /**
+     * @param channel The channel the node is a member of
+     * @param receivingChunks a collection of chunks the node can receive chunks from.
+     * @param rangeChunks a collection of chunks the node can send messages to.
+     */
+    public NetworkNode(Identifier channel, Collection<ChunkReferance> receivingChunks, Collection<ChunkReferance> rangeChunks){
+        this(channel, new HashSet<>(receivingChunks), new HashSet<>(rangeChunks));
     }
 
     /**
-     * For extracting a NetworkNode from NBT data.
-     * @param nbt The NBT command containing the data.
-     * @param server The server the Chunks reside in.
+     * @param channel The channel the node is a member of
+     * @param receivingChunks a set of chunks the node can receive chunks from.
+     * @param rangeChunks a set of chunks the node can send messages to.
      */
-    public NetworkNode(@NotNull NbtCompound nbt, @NotNull MinecraftServer server){
-        Range = new WorldChunkSetNbt(nbt, RangeKey, server);
-        ReceivingChunks = new WorldChunkSetNbt(nbt, ReceivingKey, server);
-        ChannelId = Identifier.of(nbt.getString(ChannelKey));
-        ID = nbt.getInt(IDKey);
+    public NetworkNode(Identifier channel, Set<ChunkReferance> receivingChunks, Set<ChunkReferance> rangeChunks){
+        if (receivingChunks.isEmpty() && rangeChunks.isEmpty()){
+            throw new IllegalArgumentException("Must have at least one receiving or range chunk.");
+        }
+
+        ChannelId = channel;
+        ReceivingChunks = new ChunkReferenceSet(receivingChunks);
+        RangeChunks = new ChunkReferenceSet(rangeChunks);
+
+        ID = generateId();
     }
 
-    public Set<WorldChunk> getReceivingChunks() {
+
+
+
+
+    public Set<ChunkReferance> getReceivingChunks() {
         return Collections.unmodifiableSet(ReceivingChunks);
     }
 
@@ -100,27 +123,12 @@ public class NetworkNode {
         return ChannelId;
     }
 
-    public Set<WorldChunk> getRange() {
-        return Collections.unmodifiableSet(Range);
+    public Set<ChunkReferance> getRangeChunks() {
+        return Collections.unmodifiableSet(RangeChunks);
     }
 
-    public Integer getID(){ return ID;}
+    public int getID(){ return ID;}
 
-
-    /**
-     * @param nbt the NBT command you wish to add the NetworkNode to
-     * @return the NBT command with the networkNode added
-     */
-    public NbtCompound toNbt(NbtCompound nbt){
-
-        ReceivingChunks.toNBT(nbt);
-        nbt.putString(ChannelKey, ChannelId.toString());
-        Range.toNBT(nbt);
-
-        nbt.putInt(IDKey, ID);
-        return nbt;
-
-    }
 }
 
 
