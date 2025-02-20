@@ -26,9 +26,7 @@ This mod is not a full implementation of the linked design document, but the fou
 ## ToDo List:
 
 ### Minimum Viable Product
-- revisit storage and make sure we are storing channels properly.
-- Add ChatRangeMethod to the Mod page
-- Add playerToPlayerRange gamerule to the Mod page.
+- Done!
 
 ### Phase Two
 - Add commands:

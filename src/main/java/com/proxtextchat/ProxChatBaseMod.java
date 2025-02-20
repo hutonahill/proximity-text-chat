@@ -2,16 +2,20 @@ package com.proxtextchat;
 
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
+import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
 import com.proxtextchat.PlayerChatRageMethodCommand.ChatRangeRegistry;
 import com.proxtextchat.PlayerChatRageMethodCommand.PlayerChatRangeDefinition;
 import com.proxtextchat.PlayerChatRageMethodCommand.PlayerChatRangeMethodCommandSuggestionProvider;
 import com.proxtextchat.PlayerChatRageMethodCommand.StandardPlayerChatRangeMethod;
+import com.proxtextchat.network.Channel;
 import com.proxtextchat.network.ChannelManager;
 import com.proxtextchat.network.ChannelMismatch;
 import com.proxtextchat.network.NetworkNode;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.gamerule.v1.GameRuleFactory;
 import net.fabricmc.fabric.api.gamerule.v1.GameRuleRegistry;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
@@ -19,6 +23,7 @@ import net.minecraft.command.argument.IdentifierArgumentType;
 import net.minecraft.component.ComponentType;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
+import net.minecraft.nbt.*;
 import net.minecraft.network.message.MessageType;
 import net.minecraft.network.message.SignedMessage;
 import net.minecraft.registry.Registries;
@@ -32,14 +37,24 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.GameRules;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.WorldChunk;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Path;
 
 
-
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -58,11 +73,17 @@ public class ProxChatBaseMod implements ModInitializer {
 
     public static final String MOD_ID = "proxchatbasemod";
 
+    public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+
+    public static final String ModFolder = "ProxChatBaseMod";
+
     public static final String ChatMethodArgumentName = "Method";
 
     private static final PlayerChatRangeDefinition ChatMethod = StandardPlayerChatRangeMethod.getInstance();
 
     private static final ChannelManager manager = ChannelManager.Instance;
+
+
 
 
     public static final GameRules.Key<GameRules.BooleanRule> ENABLE_PROXIMITY_TEXT_CHAT = GameRuleRegistry.register(
@@ -162,8 +183,58 @@ public class ProxChatBaseMod implements ModInitializer {
             dispatcher.getRoot().addChild(PlayerChatRangeMethodNode);
         });
 
+        ServerLifecycleEvents.SERVER_STARTED.register(ProxChatBaseMod::LoadChannelData);
+        ServerLifecycleEvents.BEFORE_SAVE.register(ProxChatBaseMod::SaveChannelData);
+
         // triggered every time a player sends a message. If the method returns false server will not deliver message.
         ServerMessageEvents.ALLOW_CHAT_MESSAGE.register(ProxChatBaseMod::AllowChatMessageRule);
+
+
+
+
+    }
+
+    private static void LoadChannelData(MinecraftServer server){
+        Path savePath = server.getSavePath(WorldSavePath.ROOT)
+                .resolve(ModFolder)
+                .resolve(ChannelManager.ChannelManagerFoler)
+                .resolve(ChannelManager.ChannelFile);
+
+        try{
+            FileInputStream fis = new FileInputStream(savePath.toFile());
+            NbtCompound loadedData = NbtIo.readCompressed(fis, NbtSizeTracker.ofUnlimitedBytes());  // Read as NbtCompound
+
+            DataResult<Pair<List<Channel>, NbtElement>> dataResult = Channel.CODEC.listOf().decode(NbtOps.INSTANCE, loadedData);
+
+            List<Channel> channelList = dataResult.resultOrPartial(LOGGER::error).orElseThrow().getFirst();
+
+            ChannelManager.Instance.addChannels(channelList);
+        } catch (IOException e) {
+            LOGGER.error("Failed to load channel data", e);
+        }
+
+
+    }
+
+    static void SaveChannelData(MinecraftServer server, boolean flush, boolean force){
+        // Encode data to NbtElement
+        DataResult<NbtElement> saveDataResult = Channel.CODEC.listOf().encodeStart(NbtOps.INSTANCE,
+                new ArrayList<>(ChannelManager.Instance.getChannelSet()));
+
+        NbtElement saveData = saveDataResult.resultOrPartial(LOGGER::error).orElseThrow();
+
+        // Create the path where data will be saved
+        Path savePath = server.getSavePath(WorldSavePath.ROOT)
+                .resolve(ModFolder)
+                .resolve(ChannelManager.ChannelManagerFoler)
+                .resolve(ChannelManager.ChannelFile);
+
+
+        try (FileOutputStream fos = new FileOutputStream(savePath.toFile())) {
+            NbtIo.writeCompressed((NbtCompound) saveData, fos);  // Writing the NbtCompound to the file
+        } catch (IOException e) {
+            LOGGER.error("Failed to save channel data", e);
+        }
     }
 
     /**
