@@ -4,7 +4,6 @@ import com.proxtextchat.Message;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
-import net.minecraft.world.chunk.WorldChunk;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -23,24 +22,22 @@ public class ChannelManager implements Collection<Channel>{
      */
     public static final ChannelManager Instance = new ChannelManager();
 
-    private static final String ChannelListKey = "ChannelList";
 
     private static final HashMap<Identifier, Channel> Graphs = new HashMap<>();
 
-    public static final String ChannelManagerFoler = "Channels";
+    /**
+     * The name of the folder used to store Channel information
+     */
+    public static final String ChannelManagerFolder = "Channels";
 
+    /**
+     * THe name of the file used to store the channelList
+     */
     public static final String ChannelFile ="Channels.nbt";
 
 
     private ChannelManager(){}
 
-    public void addChannels(Collection<Channel> channels){
-        for(Channel channel : channels){
-
-
-
-        }
-    }
 
     /**
      * @param node Adds a node to the ChannelManager.
@@ -95,7 +92,7 @@ public class ChannelManager implements Collection<Channel>{
      * @return a HashSet of nodes from all channels that receive at the specified chunk.
      * @throws RuntimeException if a ChannelMismatch occurs during processing.
      */
-    public @NotNull HashSet<NetworkNode> NodesReceivingInChunk(@NotNull WorldChunk chunk){
+    public @NotNull HashSet<NetworkNode> NodesReceivingInChunk(@NotNull ChunkReference chunk){
         try {
             return NodesReceivingInChunk(chunk, Graphs.keySet());
         } catch (ChannelMismatch e) {
@@ -111,7 +108,7 @@ public class ChannelManager implements Collection<Channel>{
      * @return a HashSet of nodes from the specified channels that are receiving at the given chunk.
      * @throws ChannelMismatch when a provided channel is not registered with the ChannelManager.
      */
-    public @NotNull HashSet<NetworkNode> NodesReceivingInChunk(@NotNull WorldChunk chunk, @NotNull Set<Identifier> channels) throws ChannelMismatch {
+    public @NotNull HashSet<NetworkNode> NodesReceivingInChunk(@NotNull ChunkReference chunk, @NotNull Set<Identifier> channels) throws ChannelMismatch {
         HashSet<NetworkNode> output = new HashSet<>();
 
         // loop though the listed channels.
@@ -122,7 +119,7 @@ public class ChannelManager implements Collection<Channel>{
             }
 
             // get the nodes that receive for this channel.
-            Map<ChunkReferance, HashSet<NetworkNode>> nodeReceivingRegistry = Graphs.get(channel).getNodeReceivingRegistry();
+            Map<ChunkReference, HashSet<NetworkNode>> nodeReceivingRegistry = Graphs.get(channel).getNodeReceivingRegistry();
 
             // add those nodes that receive at chunk to the output set.
             if(nodeReceivingRegistry.containsKey(chunk)){
@@ -460,7 +457,7 @@ public class ChannelManager implements Collection<Channel>{
                 int chunkZ = player.getBlockPos().getZ();
 
                 // Retrieve the chunk from the world
-                WorldChunk playerChunk = world.getChunk(chunkX, chunkZ);
+                ChunkReference playerChunk = new ChunkReference(world.getChunk(chunkX, chunkZ));
 
                 if(node.getRangeChunks().contains(playerChunk)){
                     player.sendMessage(message.getMessage());
@@ -509,6 +506,8 @@ public class ChannelManager implements Collection<Channel>{
      */
     @Override
     public boolean contains(Object o) {
+        //TODO: why is this suspicious?
+        //noinspection SuspiciousMethodCalls
         return Graphs.containsValue(o);
     }
 
@@ -527,19 +526,19 @@ public class ChannelManager implements Collection<Channel>{
     }
 
     /**
-     * Returns an array containing all of the elements in this collection.
+     * Returns an array containing all the elements in this collection.
      * If this collection makes any guarantees as to what order its elements
      * are returned by its iterator, this method must return the elements in
      * the same order. The returned array's {@linkplain Class#getComponentType
      * runtime component type} is {@code Object}.
      *
-     * <p>The returned array will be "safe" in that no references to it are
-     * maintained by this collection.  (In other words, this method must
+     * <p>The returned array will be "safe" in that this collection
+     * maintains no references to it.  (In other words, this method must
      * allocate a new array even if this collection is backed by an array).
      * The caller is thus free to modify the returned array.
      *
      * @return an array, whose {@linkplain Class#getComponentType runtime component
-     * type} is {@code Object}, containing all of the elements in this collection
+     * type} is {@code Object}, containing all the elements in this collection
      * @apiNote This method acts as a bridge between array-based and collection-based APIs.
      * It returns an array whose runtime type is {@code Object[]}.
      * Use {@link #toArray(Object[]) toArray(T[])} to reuse an existing
@@ -553,7 +552,7 @@ public class ChannelManager implements Collection<Channel>{
     }
 
     /**
-     * Returns an array containing all of the elements in this collection;
+     * Returns an array containing all the elements in this collection;
      * the runtime type of the returned array is that of the specified array.
      * If the collection fits in the specified array, it is returned therein.
      * Otherwise, a new array is allocated with the runtime type of the
@@ -573,7 +572,7 @@ public class ChannelManager implements Collection<Channel>{
      * @param a the array into which the elements of this collection are to be
      *          stored, if it is big enough; otherwise, a new array of the same
      *          runtime type is allocated for this purpose.
-     * @return an array containing all of the elements in this collection
+     * @return an array containing all the elements in this collection
      * @throws ArrayStoreException  if the runtime type of any element in this
      *                              collection is not assignable to the {@linkplain Class#getComponentType
      *                              runtime component type} of the specified array
@@ -602,7 +601,7 @@ public class ChannelManager implements Collection<Channel>{
      */
     @NotNull
     @Override
-    public <T> T[] toArray(@NotNull T[] a) {
+    public <T> T @NotNull [] toArray(@NotNull T @NotNull [] a) {
         return Graphs.values().toArray(a);
     }
 
@@ -654,10 +653,12 @@ public class ChannelManager implements Collection<Channel>{
 
     /**
      * Removes a single instance of the specified element from this
-     * collection, if it is present (optional operation).  More formally,
+     * collection if it is present (optional operation).
+     * More formally,
      * removes an element {@code e} such that
      * {@code Objects.equals(o, e)}, if
-     * this collection contains one or more such elements.  Returns
+     * this collection contains one or more such elements.
+     * Returns
      * {@code true} if this collection contained the specified element (or
      * equivalently, if this collection changed as a result of the call).
      *
@@ -685,11 +686,11 @@ public class ChannelManager implements Collection<Channel>{
 
 
     /**
-     * Returns {@code true} if this collection contains all of the elements
+     * Returns {@code true} if this collection contains all the elements
      * in the specified collection.
      *
      * @param c collection to be checked for containment in this collection
-     * @return {@code true} if this collection contains all of the elements
+     * @return {@code true} if this collection contains all the elements
      * in the specified collection
      * @throws ClassCastException   if the types of one or more elements
      *                              in the specified collection are incompatible with this
@@ -708,7 +709,7 @@ public class ChannelManager implements Collection<Channel>{
     }
 
     /**
-     * Adds all of the elements in the specified collection to this collection
+     * Adds all the elements in the specified collection to this collection
      * (optional operation).  The behavior of this operation is undefined if
      * the specified collection is modified while the operation is in progress.
      * (This implies that the behavior of this call is undefined if the
@@ -729,7 +730,7 @@ public class ChannelManager implements Collection<Channel>{
      * @throws IllegalArgumentException      if some property of an element of the
      *                                       specified collection prevents it from being added to this
      *                                       collection
-     * @throws IllegalStateException         if not all the elements can be added at
+     * @throws IllegalStateException         if not, all the elements can be added at
      *                                       this time due to insertion restrictions
      * @see #add(Channel)
      */
@@ -812,7 +813,7 @@ public class ChannelManager implements Collection<Channel>{
     }
 
     /**
-     * Removes all of the elements from this collection (optional operation).
+     * Removes all the elements from this collection (optional operation).
      * The collection will be empty after this method returns.
      *
      * @throws UnsupportedOperationException if the {@code clear} operation

@@ -3,16 +3,12 @@ package com.proxtextchat;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import com.mojang.datafixers.util.Pair;
-import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.proxtextchat.PlayerChatRageMethodCommand.ChatRangeRegistry;
 import com.proxtextchat.PlayerChatRageMethodCommand.PlayerChatRangeDefinition;
 import com.proxtextchat.PlayerChatRageMethodCommand.PlayerChatRangeMethodCommandSuggestionProvider;
 import com.proxtextchat.PlayerChatRageMethodCommand.StandardPlayerChatRangeMethod;
-import com.proxtextchat.network.Channel;
-import com.proxtextchat.network.ChannelManager;
-import com.proxtextchat.network.ChannelMismatch;
-import com.proxtextchat.network.NetworkNode;
+import com.proxtextchat.network.*;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -20,14 +16,11 @@ import net.fabricmc.fabric.api.gamerule.v1.GameRuleFactory;
 import net.fabricmc.fabric.api.gamerule.v1.GameRuleRegistry;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.minecraft.command.argument.IdentifierArgumentType;
-import net.minecraft.component.ComponentType;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.nbt.*;
 import net.minecraft.network.message.MessageType;
 import net.minecraft.network.message.SignedMessage;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.tag.TagKey;
 import net.minecraft.server.MinecraftServer;
@@ -41,28 +34,26 @@ import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.GameRules;
 import net.minecraft.world.chunk.Chunk;
-import net.minecraft.world.chunk.WorldChunk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
-
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
+import static net.minecraft.server.command.CommandManager.argument;
 
-import static net.minecraft.server.command.CommandManager.*;
 
-//import static com.mojang.brigadier.builder.LiteralArgumentBuilder.literal;
-
+/**
+ * The initializer.This is the heart of the mod.
+ * See Readme.md for more details about the purpose of this mod
+ */
 public class ProxChatBaseMod implements ModInitializer {
 
     /**
@@ -71,13 +62,26 @@ public class ProxChatBaseMod implements ModInitializer {
      */
     public static Function<ServerPlayerEntity, Text> getAlias = ProxChatBaseMod::AliasIsName;
 
+    /**
+     * A unique name for teh mod.
+     */
     public static final String MOD_ID = "proxchatbasemod";
 
+    /**
+     * not sure how, but this is the standard logging setup, according to ChatGPT.
+     */
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
+    /**
+     * The name of the folder containing all mod data
+     */
     public static final String ModFolder = "ProxChatBaseMod";
 
+    /**
+     * The name of the argument in the chat method command
+     */
     public static final String ChatMethodArgumentName = "Method";
+
 
     private static final PlayerChatRangeDefinition ChatMethod = StandardPlayerChatRangeMethod.getInstance();
 
@@ -98,11 +102,6 @@ public class ProxChatBaseMod implements ModInitializer {
             GameRuleFactory.createIntRule(200)
     );
 
-    public static final ComponentType<String> CHANNEL = Registry.register(
-            Registries.DATA_COMPONENT_TYPE,
-            id("channel"),
-            ComponentType.<String>builder().codec(Codec.STRING).build()
-    );
     public static final TagKey<Item> SEND_IN_INVENTORY = TagKey.of(RegistryKeys.ITEM, id("send_in_inventory"));
     public static final TagKey<Item> SEND_IN_HOTBAR = TagKey.of(RegistryKeys.ITEM, id("send_in_hotbar"));
     public static final TagKey<Item> SEND_IN_HAND = TagKey.of(RegistryKeys.ITEM, id("send_in_hand"));
@@ -119,7 +118,7 @@ public class ProxChatBaseMod implements ModInitializer {
         int chunkX = sender.getChunkPos().x;
         int chunkZ = sender.getChunkPos().z;
 
-        WorldChunk playerChunk = world.getChunk(chunkX, chunkZ);
+        ChunkReference playerChunk = new ChunkReference(world.getChunk(chunkX, chunkZ));
 
         if (server == null) {
             return false;
@@ -131,7 +130,7 @@ public class ProxChatBaseMod implements ModInitializer {
 
 
             // Player to Network chat
-            HashSet<NetworkNode> playerNodes = null;
+            HashSet<NetworkNode> playerNodes;
             try {
                 // get the nodes in the chunk the player is in, for the channels he user is registered to send to.
                 playerNodes = manager.NodesReceivingInChunk(playerChunk,
@@ -197,7 +196,7 @@ public class ProxChatBaseMod implements ModInitializer {
     private static void LoadChannelData(MinecraftServer server){
         Path savePath = server.getSavePath(WorldSavePath.ROOT)
                 .resolve(ModFolder)
-                .resolve(ChannelManager.ChannelManagerFoler)
+                .resolve(ChannelManager.ChannelManagerFolder)
                 .resolve(ChannelManager.ChannelFile);
 
         try{
@@ -208,7 +207,7 @@ public class ProxChatBaseMod implements ModInitializer {
 
             List<Channel> channelList = dataResult.resultOrPartial(LOGGER::error).orElseThrow().getFirst();
 
-            ChannelManager.Instance.addChannels(channelList);
+            ChannelManager.Instance.addAll(channelList);
         } catch (IOException e) {
             LOGGER.error("Failed to load channel data", e);
         }
@@ -226,7 +225,7 @@ public class ProxChatBaseMod implements ModInitializer {
         // Create the path where data will be saved
         Path savePath = server.getSavePath(WorldSavePath.ROOT)
                 .resolve(ModFolder)
-                .resolve(ChannelManager.ChannelManagerFoler)
+                .resolve(ChannelManager.ChannelManagerFolder)
                 .resolve(ChannelManager.ChannelFile);
 
 
@@ -278,13 +277,15 @@ public class ProxChatBaseMod implements ModInitializer {
 
         return 1;
     }
+
+
     public static Identifier id(String path)
     {
         return Identifier.of(MOD_ID, path);
     }
 
     /**
-     * default method for determining alias. Returns the player's name.
+     * Default method for determining alias. Returns the player's name.
      * @param player The Player you want ot get the alias of
      * @return the alias of the target player
      */

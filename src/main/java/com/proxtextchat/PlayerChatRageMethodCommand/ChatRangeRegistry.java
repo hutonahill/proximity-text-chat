@@ -14,6 +14,9 @@ public class ChatRangeRegistry {
     private ChatRangeRegistry() {}
 
 
+    /**
+     * a registry of methods that can be used to determine the player's range.
+     */
     public static final Map<Identifier, PlayerChatRangeDefinition> registry = new HashMap<>();
 
 

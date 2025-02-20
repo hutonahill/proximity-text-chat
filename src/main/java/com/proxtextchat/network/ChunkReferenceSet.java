@@ -9,19 +9,23 @@ import java.util.*;
 /**
  * An AbstractSet of WorldChunks that can be easily converted to NBT data.
  */
-public class ChunkReferenceSet extends AbstractSet<ChunkReferance> {
+public class ChunkReferenceSet extends AbstractSet<ChunkReference> {
+//TODO: can this be removed?
 
-    private final Set<ChunkReferance> Chunks;
+    private final Set<ChunkReference> Chunks;
 
     private static final String ChunkReferenceListKey = "ChunkReferenceList";
 
-    private static final String DimensionKey = "Dimension";
-
+    /**
+     * provides the necessary logic for translating
+     * between in-memory objects and their external representations.
+     * See <a href="https://docs.fabricmc.net/1.21/develop/codecs">Fabric Codec Docs</a>.
+     */
     public static final Codec<ChunkReferenceSet> CODEC;
 
     static{
         CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            ChunkReferance.CODEC.listOf().fieldOf(ChunkReferenceListKey).forGetter(ChunkReferenceSet::getList)
+            ChunkReference.CODEC.listOf().fieldOf(ChunkReferenceListKey).forGetter(ChunkReferenceSet::getList)
         ).apply(instance, ChunkReferenceSet::new));
     }
 
@@ -29,15 +33,18 @@ public class ChunkReferenceSet extends AbstractSet<ChunkReferance> {
      * For creating an NBT compatible WorldChunk set
      * @param chunks The set of chunks to be stored.
      */
-    public ChunkReferenceSet(Collection<ChunkReferance> chunks){
+    public ChunkReferenceSet(Collection<ChunkReference> chunks){
         Chunks = new HashSet<>(chunks);
     }
 
-    public ChunkReferenceSet(Set<ChunkReferance> chunks){
+    /**
+     * @param chunks converts a Set of {@link ChunkReference} into a
+     */
+    public ChunkReferenceSet(Set<ChunkReference> chunks){
         Chunks = chunks;
     }
 
-    private List<ChunkReferance> getList(){
+    private List<ChunkReference> getList(){
         return new ArrayList<>(Chunks);
     }
 
@@ -47,7 +54,7 @@ public class ChunkReferenceSet extends AbstractSet<ChunkReferance> {
      * @return an iterator over the elements contained in this collection
      */
     @Override
-    public @NotNull Iterator<ChunkReferance> iterator() {
+    public @NotNull Iterator<ChunkReference> iterator() {
         return Chunks.iterator();
     }
 

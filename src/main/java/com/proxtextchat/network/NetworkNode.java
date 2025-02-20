@@ -42,7 +42,11 @@ public class NetworkNode {
     private final ChunkReferenceSet RangeChunks;
     private static final String RangeKey = "Range";
 
-
+    /**
+     * provides the necessary logic for translating
+     * between in-memory objects and their external representations.
+     * See <a href="https://docs.fabricmc.net/1.21/develop/codecs">Fabric Codec Docs</a>.
+     */
     public static final Codec<NetworkNode> CODEC;
 
     static{
@@ -70,7 +74,7 @@ public class NetworkNode {
      * @param chunks a set of chunks the node can send messages to.
      * @param id A manually set ID value. ID must be unique.
      */
-    public NetworkNode(Identifier channel, Collection<ChunkReferance> receivingChunks, Collection<ChunkReferance> chunks, Integer id){
+    public NetworkNode(Identifier channel, Collection<ChunkReference> receivingChunks, Collection<ChunkReference> chunks, Integer id){
         if (idCounter.contains(id)){
             throw new IllegalArgumentException("id `" + id + "` has already been assigned");
         }
@@ -90,7 +94,7 @@ public class NetworkNode {
      * @param receivingChunks a collection of chunks the node can receive chunks from.
      * @param rangeChunks a collection of chunks the node can send messages to.
      */
-    public NetworkNode(Identifier channel, Collection<ChunkReferance> receivingChunks, Collection<ChunkReferance> rangeChunks){
+    public NetworkNode(Identifier channel, Collection<ChunkReference> receivingChunks, Collection<ChunkReference> rangeChunks){
         this(channel, new HashSet<>(receivingChunks), new HashSet<>(rangeChunks));
     }
 
@@ -99,7 +103,7 @@ public class NetworkNode {
      * @param receivingChunks a set of chunks the node can receive chunks from.
      * @param rangeChunks a set of chunks the node can send messages to.
      */
-    public NetworkNode(Identifier channel, Set<ChunkReferance> receivingChunks, Set<ChunkReferance> rangeChunks){
+    public NetworkNode(Identifier channel, Set<ChunkReference> receivingChunks, Set<ChunkReference> rangeChunks){
         if (receivingChunks.isEmpty() && rangeChunks.isEmpty()){
             throw new IllegalArgumentException("Must have at least one receiving or range chunk.");
         }
@@ -115,7 +119,7 @@ public class NetworkNode {
 
 
 
-    public Set<ChunkReferance> getReceivingChunks() {
+    public Set<ChunkReference> getReceivingChunks() {
         return Collections.unmodifiableSet(ReceivingChunks);
     }
 
@@ -123,7 +127,7 @@ public class NetworkNode {
         return ChannelId;
     }
 
-    public Set<ChunkReferance> getRangeChunks() {
+    public Set<ChunkReference> getRangeChunks() {
         return Collections.unmodifiableSet(RangeChunks);
     }
 

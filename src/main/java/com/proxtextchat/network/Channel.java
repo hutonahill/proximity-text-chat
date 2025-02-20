@@ -18,7 +18,7 @@ import java.util.function.IntFunction;
 public class Channel implements Collection<NetworkNode>{
     private final DirectedMultigraph<NetworkNode, DefaultEdge> Graph = new DirectedMultigraph<>(DefaultEdge.class);
 
-    private final HashMap<ChunkReferance, HashSet<NetworkNode>> NodeReceivingRegistry = new HashMap<>();
+    private final HashMap<ChunkReference, HashSet<NetworkNode>> NodeReceivingRegistry = new HashMap<>();
 
     private final HashSet<PlayerEntity> ReceiveFromPlayerRegistry = new HashSet<>();
 
@@ -28,6 +28,11 @@ public class Channel implements Collection<NetworkNode>{
 
     private static final String NodeListKey = "NodeList";
 
+    /**
+     * provides the necessary logic for translating
+     * between in-memory objects and their external representations.
+     * See <a href="https://docs.fabricmc.net/1.21/develop/codecs">Fabric Codec Docs</a>.
+     */
     public static final Codec<Channel> CODEC;
 
     static{
@@ -63,6 +68,10 @@ public class Channel implements Collection<NetworkNode>{
         return new ArrayList<>(Graph.vertexSet());
     }
 
+    /**
+     * @param nodes Nodes to make up the channel
+     * @throws ChannelMismatch If any node's channelId's don't match.
+     */
     public Channel(Collection<NetworkNode> nodes) throws ChannelMismatch {
         this(new HashSet<>(nodes));
     }
@@ -98,7 +107,7 @@ public class Channel implements Collection<NetworkNode>{
 
             // if we haven't thrown an exception, add the node to the graph.
             Graph.addVertex();
-            for(ChunkReferance chunk : node.getReceivingChunks()){
+            for(ChunkReference chunk : node.getReceivingChunks()){
                 // Remember where the node is
                 if(!NodeReceivingRegistry.containsKey(chunk)){
                     NodeReceivingRegistry.put(chunk, new HashSet<>());
@@ -111,14 +120,14 @@ public class Channel implements Collection<NetworkNode>{
 
         // determine which nodes should be connected to each other
         for (NetworkNode node1 : nodes) {
-            Set<ChunkReferance> chunks = node1.getRangeChunks();
+            Set<ChunkReference> chunks = node1.getRangeChunks();
 
-            Set<ChunkReferance> intersection = new HashSet<>(chunks);
+            Set<ChunkReference> intersection = new HashSet<>(chunks);
 
             intersection.retainAll(NodeReceivingRegistry.keySet());
 
             // loop though all the chunks in Node1
-            for (ChunkReferance chunk : intersection) {
+            for (ChunkReference chunk : intersection) {
 
                 // if there is, loop though all nodes in that chunk
                 for (NetworkNode node2 : NodeReceivingRegistry.get(chunk)){
@@ -155,7 +164,7 @@ public class Channel implements Collection<NetworkNode>{
         Graph.addVertex(node);
 
         // then we establish outgoing connections from the node.
-        for (ChunkReferance chunk : node.getRangeChunks()){
+        for (ChunkReference chunk : node.getRangeChunks()){
             if (NodeReceivingRegistry.containsKey(chunk)){
                 for (NetworkNode node2 : NodeReceivingRegistry.get(chunk)){
                     Graph.addEdge(node, node2);
@@ -164,7 +173,7 @@ public class Channel implements Collection<NetworkNode>{
         }
 
         //now we register the location of the node
-        for(ChunkReferance chunk : node.getReceivingChunks()){
+        for(ChunkReference chunk : node.getReceivingChunks()){
             if (!NodeReceivingRegistry.containsKey(chunk)){
                 NodeReceivingRegistry.put(chunk, new HashSet<>());
             }
@@ -219,7 +228,7 @@ public class Channel implements Collection<NetworkNode>{
      * @param receivingChunks the range of chunks where the node can receive messages from
      * @param rangeChunks the range of chunks the node can send messages to.
      */
-    public void NewNode(Set<ChunkReferance> receivingChunks, Set<ChunkReferance> rangeChunks){
+    public void NewNode(Set<ChunkReference> receivingChunks, Set<ChunkReference> rangeChunks){
         NetworkNode node = new NetworkNode(ID, receivingChunks, rangeChunks);
 
         add(node);
@@ -373,7 +382,7 @@ public class Channel implements Collection<NetworkNode>{
         return shortestPaths;
     }
 
-    public @NotNull Map<ChunkReferance, HashSet<NetworkNode>> getNodeReceivingRegistry(){
+    public @NotNull Map<ChunkReference, HashSet<NetworkNode>> getNodeReceivingRegistry(){
         return Collections.unmodifiableMap(NodeReceivingRegistry);
     }
 
@@ -494,19 +503,19 @@ public class Channel implements Collection<NetworkNode>{
     }
 
     /**
-     * Returns an array containing all of the elements in this collection.
+     * Returns an array containing all the elements in this collection.
      * If this collection makes any guarantees as to what order its elements
      * are returned by its iterator, this method must return the elements in
      * the same order. The returned array's {@linkplain Class#getComponentType
      * runtime component type} is {@code Object}.
      *
-     * <p>The returned array will be "safe" in that no references to it are
-     * maintained by this collection.  (In other words, this method must
+     * <p>The returned array will be "safe" in that this collection
+     * maintains no references to it.  (In other words, this method must
      * allocate a new array even if this collection is backed by an array).
      * The caller is thus free to modify the returned array.
      *
      * @return an array, whose {@linkplain Class#getComponentType runtime component
-     * type} is {@code Object}, containing all of the elements in this collection
+     * type} is {@code Object}, containing all the elements in this collection
      * @apiNote This method acts as a bridge between array-based and collection-based APIs.
      * It returns an array whose runtime type is {@code Object[]}.
      * Use {@link #toArray(Object[]) toArray(T[])} to reuse an existing
@@ -520,7 +529,7 @@ public class Channel implements Collection<NetworkNode>{
     }
 
     /**
-     * Returns an array containing all of the elements in this collection;
+     * Returns an array containing all the elements in this collection;
      * the runtime type of the returned array is that of the specified array.
      * If the collection fits in the specified array, it is returned therein.
      * Otherwise, a new array is allocated with the runtime type of the
@@ -540,7 +549,7 @@ public class Channel implements Collection<NetworkNode>{
      * @param a the array into which the elements of this collection are to be
      *          stored, if it is big enough; otherwise, a new array of the same
      *          runtime type is allocated for this purpose.
-     * @return an array containing all of the elements in this collection
+     * @return an array containing all the elements in this collection
      * @throws ArrayStoreException  if the runtime type of any element in this
      *                              collection is not assignable to the {@linkplain Class#getComponentType
      *                              runtime component type} of the specified array
@@ -576,11 +585,11 @@ public class Channel implements Collection<NetworkNode>{
 
 
     /**
-     * Returns {@code true} if this collection contains all of the elements
+     * Returns {@code true} if this collection contains all the elements
      * in the specified collection.
      *
      * @param c collection to be checked for containment in this collection
-     * @return {@code true} if this collection contains all of the elements
+     * @return {@code true} if this collection contains all the elements
      * in the specified collection
      * @throws ClassCastException   if the types of one or more elements
      *                              in the specified collection are incompatible with this
@@ -599,7 +608,7 @@ public class Channel implements Collection<NetworkNode>{
     }
 
     /**
-     * Adds all of the elements in the specified collection to this collection
+     * Adds all the elements in the specified collection to this collection
      * (optional operation).  The behavior of this operation is undefined if
      * the specified collection is modified while the operation is in progress.
      * (This implies that the behavior of this call is undefined if the
@@ -620,7 +629,7 @@ public class Channel implements Collection<NetworkNode>{
      * @throws IllegalArgumentException      if some property of an element of the
      *                                       specified collection prevents it from being added to this
      *                                       collection
-     * @throws IllegalStateException         if not all the elements can be added at
+     * @throws IllegalStateException         if not, all the elements can be added at
      *                                       this time due to insertion restrictions
      * @see #add(NetworkNode)
      */
@@ -733,7 +742,7 @@ public class Channel implements Collection<NetworkNode>{
     }
 
     /**
-     * Removes all of the elements from this collection (optional operation).
+     * Removes all the elements from this collection (optional operation).
      * The collection will be empty after this method returns.
      *
      * @throws UnsupportedOperationException if the {@code clear} operation

@@ -40,9 +40,10 @@ This mod is not a full implementation of the linked design document, but the fou
     - sends a message to all nodes connected to the source node.
   - `/GetNodeList <optionalChannelIdentifier>` 
     - returns a list of nodes and the chunks they cover, optionally restricted to a channel.
+- Implement threading for populating the shortest path registries.
+- Add documentation explaining how to use this stuff.
 
 ### Possible Additional Features
-- Implement threading for populating the shortest path registries.
 - Item Tags:
   - sendInCurios
   - receiveInCurios
@@ -53,11 +54,11 @@ This mod is not a full implementation of the linked design document, but the fou
 
 
 ## Documentation
-This mod adds a system of networks with nodes (channels) A node is composed of a set of `WorldChunks` 
-which it can send messages to and a set of `WorldChunks` it can receive messages from. This creates a 
-network you can send messages though using methods in `ChannelManager`. Messages contain the text of 
-the message the actual sending entity, an alias for that entity and the path the message took to get 
-to its destination.
+This mod adds a system of networks with nodes (channels) A node is composed of a set of `CunkReferanc`s 
+which it can send messages to and a set of `CunkReferanc`s it can receive messages from. 
+This creates a network you can send messages though using methods in `ChannelManager`. 
+Messages contain the text of the message the actual sending entity, an alias for that entity and 
+the path the message took to get to its destination.
 
 This section will be rewritten as the mod gets closer to completion.
 
