@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -194,14 +195,23 @@ public class ProxChatBaseMod implements ModInitializer {
     }
 
     private static void LoadChannelData(MinecraftServer server){
+        // define where we save data.
         Path savePath = server.getSavePath(WorldSavePath.ROOT)
                 .resolve(ModFolder)
                 .resolve(ChannelManager.ChannelManagerFolder)
                 .resolve(ChannelManager.ChannelFile);
 
         try{
+
+            // make sure we don't reference something that doesn't exist.
+            Files.createDirectories(savePath.getParent());
+            if (!Files.exists(savePath)) {
+                Files.createFile(savePath);
+            }
+
+
             FileInputStream fis = new FileInputStream(savePath.toFile());
-            NbtCompound loadedData = NbtIo.readCompressed(fis, NbtSizeTracker.ofUnlimitedBytes());  // Read as NbtCompound
+            NbtCompound loadedData = NbtIo.readCompressed(fis, NbtSizeTracker.ofUnlimitedBytes());
 
             DataResult<Pair<List<Channel>, NbtElement>> dataResult = Channel.CODEC.listOf().decode(NbtOps.INSTANCE, loadedData);
 
@@ -215,7 +225,7 @@ public class ProxChatBaseMod implements ModInitializer {
 
     }
 
-    static void SaveChannelData(MinecraftServer server, boolean flush, boolean force){
+    private static void SaveChannelData(MinecraftServer server, boolean flush, boolean force){
         // Encode data to NbtElement
         DataResult<NbtElement> saveDataResult = Channel.CODEC.listOf().encodeStart(NbtOps.INSTANCE,
                 new ArrayList<>(ChannelManager.Instance.getChannelSet()));
