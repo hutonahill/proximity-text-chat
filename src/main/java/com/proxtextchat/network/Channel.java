@@ -215,7 +215,7 @@ public class Channel implements Collection<NetworkNode>{
 
 
     /**
-     *
+     * Merges the nodes from one channel into another.
      * @param channel Another Channel you wish to combine with this channel
      */
     public void MergeChannels(@NotNull Channel channel){
@@ -252,7 +252,6 @@ public class Channel implements Collection<NetworkNode>{
 
     /**
      * Removes a node from the graph and clears any associated data.
-     *
      * @param node the node to be removed from the graph.
      */
     @Override
@@ -317,7 +316,9 @@ public class Channel implements Collection<NetworkNode>{
         if (ShortestPathRegistry.isEmpty()){
 
 
-            // for each node
+
+            // each loop on this node is independent, not dependent on the previous,
+            // so we shouldn't have issues threading this process
             for (NetworkNode source : Graph.vertexSet()) {
 
                 ShortestPathRegistry.put(source, computeShortestPaths(source));

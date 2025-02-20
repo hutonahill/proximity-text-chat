@@ -227,10 +227,10 @@ public class ProxChatBaseMod implements ModInitializer {
 
     private static void SaveChannelData(MinecraftServer server, boolean flush, boolean force){
         // Encode data to NbtElement
-        DataResult<NbtElement> saveDataResult = Channel.CODEC.listOf().encodeStart(NbtOps.INSTANCE,
+        DataResult<NbtCompound> saveDataResult = Channel.CODEC.listOf().encodeStart(NbtOps.INSTANCE,
                 new ArrayList<>(ChannelManager.Instance.getChannelSet()));
 
-        NbtElement saveData = saveDataResult.resultOrPartial(LOGGER::error).orElseThrow();
+        NbtCompound saveData = saveDataResult.resultOrPartial(LOGGER::error).orElseThrow();
 
         // Create the path where data will be saved
         Path savePath = server.getSavePath(WorldSavePath.ROOT)
@@ -240,7 +240,7 @@ public class ProxChatBaseMod implements ModInitializer {
 
 
         try (FileOutputStream fos = new FileOutputStream(savePath.toFile())) {
-            NbtIo.writeCompressed((NbtCompound) saveData, fos);  // Writing the NbtCompound to the file
+            NbtIo.writeCompressed(saveData, fos);  // Writing the NbtCompound to the file
         } catch (IOException e) {
             LOGGER.error("Failed to save channel data", e);
         }
