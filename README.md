@@ -62,6 +62,10 @@ the path the message took to get to its destination.
 
 This section will be rewritten as the mod gets closer to completion.
 
+## Versioning
+The version number of this mod `<minecraft_version>-<mod_version>`. 
+`mod_version` will continue to iterate independent of `minecraft_version`
+
 ## License
 This project is licensed under the GNU Lesser General Public License v3.0 (LGPL-3.0).
 
