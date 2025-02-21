@@ -42,6 +42,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -76,7 +77,7 @@ public class ProxChatBaseMod implements ModInitializer {
     /**
      * The name of the folder containing all mod data
      */
-    public static final String ModFolder = "ProxChatBaseMod";
+    public static final String ModFolder = "ProxChatBaseModData";
 
     /**
      * The name of the argument in the chat method command
@@ -87,8 +88,6 @@ public class ProxChatBaseMod implements ModInitializer {
     private static final PlayerChatRangeDefinition ChatMethod = StandardPlayerChatRangeMethod.getInstance();
 
     private static final ChannelManager manager = ChannelManager.Instance;
-
-
 
 
     public static final GameRules.Key<GameRules.BooleanRule> ENABLE_PROXIMITY_TEXT_CHAT = GameRuleRegistry.register(
@@ -183,15 +182,84 @@ public class ProxChatBaseMod implements ModInitializer {
             dispatcher.getRoot().addChild(PlayerChatRangeMethodNode);
         });
 
-        ServerLifecycleEvents.SERVER_STARTED.register(ProxChatBaseMod::LoadChannelData);
-        ServerLifecycleEvents.BEFORE_SAVE.register(ProxChatBaseMod::SaveChannelData);
+        /*ServerLifecycleEvents.SERVER_STARTED.register(ProxChatBaseMod::LoadChannelData);
+        ServerLifecycleEvents.BEFORE_SAVE.register(ProxChatBaseMod::SaveChannelData);*/
 
         // triggered every time a player sends a message. If the method returns false server will not deliver message.
         ServerMessageEvents.ALLOW_CHAT_MESSAGE.register(ProxChatBaseMod::AllowChatMessageRule);
 
 
+        // TESTING IO:
 
+        try {
+            ChannelManager.Instance.add(new Channel(new HashSet<>()));
+        } catch (ChannelMismatch e) {
+            throw new RuntimeException(e);
+        }
 
+        SaveChannelData();
+
+        throw new RuntimeException("CrashPlz");
+
+    }
+
+    private static Path addCorruptedTag(Path input) {
+        String corruptedTag = "[CORRUPTED]";
+        String fileName = input.getFileName().toString();
+
+        int lastDotIndex = fileName.lastIndexOf('.');
+        String newFileName;
+
+        if (lastDotIndex == -1) {
+            // No '.' in the filename
+            newFileName = fileName + corruptedTag;
+        } else {
+            newFileName = fileName.substring(0, lastDotIndex) + corruptedTag + fileName.substring(lastDotIndex);
+        }
+
+        return input.resolveSibling(newFileName);
+    }
+
+    private static Path getUniquePath(Path targetPath) {
+        if (!Files.exists(targetPath)) return targetPath;
+
+        String fileName = targetPath.getFileName().toString();
+        Path parent = targetPath.getParent();
+
+        int lastDotIndex = fileName.lastIndexOf('.');
+        String baseName = (lastDotIndex == -1) ? fileName : fileName.substring(0, lastDotIndex);
+        String extension = (lastDotIndex == -1) ? "" : fileName.substring(lastDotIndex);
+
+        int counter = 1;
+        Path newPath;
+        do {
+            newPath = parent.resolve(baseName + "(" + counter + ")" + extension);
+            counter++;
+        } while (Files.exists(newPath));
+
+        return newPath;
+    }
+
+    private static void saveCorruptedFileCopy(Path current) {
+        try {
+            if (!Files.exists(current)) {
+                throw new IllegalArgumentException("File does not exist: " + current);
+            }
+
+            // Apply a tag to the path so devs know it's corrupted
+            Path taggedPath = addCorruptedTag(current);
+
+            // Ensure the corrupted filename is unique
+            Path uniqueTaggedPath = getUniquePath(taggedPath);
+
+            // Move the original file to the corrupted filename
+            Files.move(current, uniqueTaggedPath);
+
+            // Create an empty file at the original path
+            Files.createFile(current);
+        } catch (IOException e) {
+            LOGGER.error("Failed to copy corrupted file", e);
+        }
     }
 
     private static void LoadChannelData(MinecraftServer server){
@@ -201,46 +269,100 @@ public class ProxChatBaseMod implements ModInitializer {
                 .resolve(ChannelManager.ChannelManagerFolder)
                 .resolve(ChannelManager.ChannelFile);
 
+
+        // make sure we don't reference something that doesn't exist.
         try{
-
-            // make sure we don't reference something that doesn't exist.
             Files.createDirectories(savePath.getParent());
-            if (!Files.exists(savePath)) {
-                Files.createFile(savePath);
-            }
+        }
+        catch (IOException e){
 
-
-            FileInputStream fis = new FileInputStream(savePath.toFile());
-            NbtCompound loadedData = NbtIo.readCompressed(fis, NbtSizeTracker.ofUnlimitedBytes());
-
-            DataResult<Pair<List<Channel>, NbtElement>> dataResult = Channel.CODEC.listOf().decode(NbtOps.INSTANCE, loadedData);
-
-            List<Channel> channelList = dataResult.resultOrPartial(LOGGER::error).orElseThrow().getFirst();
-
-            ChannelManager.Instance.addAll(channelList);
-        } catch (IOException e) {
-            LOGGER.error("Failed to load channel data", e);
+            LOGGER.error("Failed to generate Channel Data filepath." +
+                    "Saving a copy of the corrupted file ", e);
         }
 
 
+        List<Channel> channelList = new ArrayList<>();
+
+        if (!Files.exists(savePath)) {
+            try{
+                Files.createFile(savePath);
+            }
+            catch (IOException e){
+                LOGGER.error("Failed to create Channel Data file", e);
+            }
+        }
+        else{
+
+            NbtCompound loadedData = new NbtCompound();
+            try{
+                loadedData = NbtIo.readCompressed(savePath, NbtSizeTracker.ofUnlimitedBytes());
+
+            } catch (IOException eOne) {
+                LOGGER.warn("Failed to read compressed channel data file at `"+savePath+"`. " +
+                        "Attempting to recover by reading uncompressed...", eOne);
+
+                try {
+                    loadedData = NbtIo.read(savePath);
+
+                    LOGGER.warn("Successfully recovered by reading channel data .");
+                }
+                catch (IOException eTwo){
+                    saveCorruptedFileCopy(savePath);
+
+                    LOGGER.error("Failed to recover by reading uncompressed. " +
+                            "Saved a copy of the corrupted file in the same directory and reset out the original corrupted file. " +
+                            "All channel has been lost.", eTwo);
+                }
+            }
+
+            NbtElement loadedElement = new NbtCompound();
+            if (loadedData.contains("data")){
+                loadedElement = loadedData.get("data");
+            }
+
+            DataResult<List<Channel>> dataResult = Channel.CODEC.listOf().parse(NbtOps.INSTANCE, loadedElement);
+            channelList = dataResult.resultOrPartial(LOGGER::error).orElseThrow();
+
+        }
+        ChannelManager.Instance.addAll(channelList);
     }
 
-    private static void SaveChannelData(MinecraftServer server, boolean flush, boolean force){
+
+
+    private static void SaveChannelData(/*MinecraftServer server, boolean flush, boolean force*/){
         // Encode data to NbtElement
-        DataResult<NbtCompound> saveDataResult = Channel.CODEC.listOf().encodeStart(NbtOps.INSTANCE,
+        DataResult<NbtElement> saveDataResult = Channel.CODEC.listOf().encodeStart(NbtOps.INSTANCE,
                 new ArrayList<>(ChannelManager.Instance.getChannelSet()));
 
-        NbtCompound saveData = saveDataResult.resultOrPartial(LOGGER::error).orElseThrow();
+        NbtElement saveDataElement = saveDataResult.resultOrPartial(LOGGER::error).orElseThrow();
+
+        LOGGER.warn("SAVE DATA ELEMENT: "+saveDataElement);
+        NbtCompound nbt;
+        if (saveDataElement instanceof NbtCompound compound) {
+            nbt = compound;
+        } else {
+            nbt = new NbtCompound();
+            nbt.put("data",saveDataElement);
+        }
+
 
         // Create the path where data will be saved
-        Path savePath = server.getSavePath(WorldSavePath.ROOT)
-                .resolve(ModFolder)
+        String userHome = System.getProperty("user.home");
+        Path savePath = Paths.get(userHome, "Desktop")
+                .resolve(ModFolder+"2")
                 .resolve(ChannelManager.ChannelManagerFolder)
                 .resolve(ChannelManager.ChannelFile);
 
+        LOGGER.warn(savePath.toString());
+        /*Path savePath = server.getSavePath(WorldSavePath.ROOT)
+                .resolve(ModFolder)
+                .resolve(ChannelManager.ChannelManagerFolder)
+                .resolve(ChannelManager.ChannelFile);*/
 
-        try (FileOutputStream fos = new FileOutputStream(savePath.toFile())) {
-            NbtIo.writeCompressed(saveData, fos);  // Writing the NbtCompound to the file
+
+        try {
+            Files.createFile(savePath);
+            NbtIo.writeCompressed(nbt, savePath);  // Writing the NbtCompound to the file
         } catch (IOException e) {
             LOGGER.error("Failed to save channel data", e);
         }
