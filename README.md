@@ -66,6 +66,13 @@ This section will be rewritten as the mod gets closer to completion.
 The version number of this mod `<minecraft_version>-<mod_version>`. 
 `mod_version` will continue to iterate independent of `minecraft_version`
 
+## Testing
+Wow, I really hate coming up with tests.
+I'm having included any tests here,
+but I am definitely willing to include them so long as i don't have to come up with them.
+If you have an idea for a test open an issue and if I think its valid, I will include it.
+The proposal should include inputs and expected outputs.
+
 ## License
 This project is licensed under the GNU Lesser General Public License v3.0 (LGPL-3.0).
 
@@ -87,5 +94,4 @@ Many thanks to DeltaHelios, Parzi, and many people on the fabric discord for hel
 develop my first mod! There is no way I could do this alone!
 
 ## Activity
-
 ![Alt](https://repobeats.axiom.co/api/embed/3c3df086f5a4a4b42466dd97000fdc6b639b3c7f.svg "Repobeats analytics image")

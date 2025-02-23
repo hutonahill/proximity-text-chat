@@ -16,8 +16,6 @@ public class NetworkNode {
     private final int ID;
     private static final String IDKey ="ID";
 
-
-
     private static Integer generateId(){
 
         if (idCounter.isEmpty()){
@@ -88,7 +86,6 @@ public class NetworkNode {
     }
 
 
-
     /**
      * @param channel The channel the node is a member of
      * @param receivingChunks a collection of chunks the node can receive chunks from.
@@ -114,9 +111,6 @@ public class NetworkNode {
 
         ID = generateId();
     }
-
-
-
 
 
     public Set<ChunkReference> getReceivingChunks() {

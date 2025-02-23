@@ -49,9 +49,7 @@ public class ChannelManager implements Collection<Channel>{
         if (Graphs.containsKey(node.getChannelId())){
             Channel graph = Graphs.get(node.getChannelId());
 
-
             graph.add(node);
-
         }
         else{
             HashSet<NetworkNode> tempSet = new HashSet<>();
@@ -60,6 +58,40 @@ public class ChannelManager implements Collection<Channel>{
                 Graphs.put(node.getChannelId(), new Channel(tempSet));
             } catch (ChannelMismatch e) {
                 throw new RuntimeException(e);
+            }
+        }
+    }
+
+    /**
+     * For adding multiple nodes to the network.
+     * @param nodes a collection of nodes to be added. May contain nodes of many channels.
+     */
+    public void addManyNodes(@NotNull Collection<NetworkNode> nodes){
+        // the reason for making this method so complex because we want advantage of the addAll channel method
+        // as it will spend less time rebuilding the shortest path registries.
+
+        HashMap<Identifier, HashSet<NetworkNode>> nodeRegistry = new HashMap<>();
+
+        for(NetworkNode node : nodes){
+            if(!nodeRegistry.containsKey(node.getChannelId())){
+                nodeRegistry.put(node.getChannelId(), new HashSet<>());
+            }
+
+            nodeRegistry.get(node.getChannelId()).add(node);
+        }
+
+        for(Identifier channelId : nodeRegistry.keySet()){
+            if(!Graphs.containsKey(channelId)){
+                try {
+                    Graphs.put(channelId, new Channel(nodeRegistry.get(channelId)));
+                }
+                // We can catch this because we have already sorted nodes by channel.
+                catch (ChannelMismatch e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            else{
+                Graphs.get(channelId).addAll(nodeRegistry.get(channelId));
             }
         }
     }
@@ -275,7 +307,7 @@ public class ChannelManager implements Collection<Channel>{
      * @param channels the collection of channels to remove the player from.
      * @throws ChannelMismatch if any channel in the collection is not registered with the ChannelManager.
      */
-    public void removeSendTOPlayer(@NotNull PlayerEntity player, @NotNull Collection<Identifier> channels) throws ChannelMismatch{
+    public void removeSendToPlayer(@NotNull PlayerEntity player, @NotNull Collection<Identifier> channels) throws ChannelMismatch{
         for(Identifier channel : channels){
             removeSendToPlayer(player, channel);
         }
@@ -444,7 +476,6 @@ public class ChannelManager implements Collection<Channel>{
         }
 
         // now deliver the messages to players
-
         Set<PlayerEntity> registeredPlayers = Graphs.get(node.getChannelId()).getSendToPlayerRegistry();
 
         for(PlayerEntity player : registeredPlayers){
