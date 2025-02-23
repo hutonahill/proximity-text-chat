@@ -37,9 +37,7 @@ import net.minecraft.world.chunk.Chunk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -211,7 +209,7 @@ public class ProxChatBaseMod implements ModInitializer {
 
 
             FileInputStream fis = new FileInputStream(savePath.toFile());
-            NbtCompound loadedData = NbtIo.readCompressed(fis, NbtSizeTracker.ofUnlimitedBytes());
+            NbtElement loadedData = NbtIo.read(new DataInputStream(fis), NbtSizeTracker.ofUnlimitedBytes());
 
             DataResult<Pair<List<Channel>, NbtElement>> dataResult = Channel.CODEC.listOf().decode(NbtOps.INSTANCE, loadedData);
 
@@ -240,7 +238,8 @@ public class ProxChatBaseMod implements ModInitializer {
 
 
         try (FileOutputStream fos = new FileOutputStream(savePath.toFile())) {
-            NbtIo.writeCompressed((NbtCompound) saveData, fos);  // Writing the NbtCompound to the file
+            //NbtIo.writeCompressed((NbtCompound) saveData, fos);  // Writing the NbtCompound to the file
+            NbtIo.write(saveData, new DataOutputStream(fos));
         } catch (IOException e) {
             LOGGER.error("Failed to save channel data", e);
         }
