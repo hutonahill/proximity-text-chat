@@ -4,8 +4,12 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DirectedMultigraph;
 
@@ -19,6 +23,8 @@ public class Channel implements Collection<NetworkNode>{
     private final DirectedMultigraph<NetworkNode, DefaultEdge> Graph = new DirectedMultigraph<>(DefaultEdge.class);
 
     private final HashMap<ChunkReference, HashSet<NetworkNode>> NodeReceivingRegistry = new HashMap<>();
+
+    private final HashMap<ChunkReference, HashSet<NetworkNode>> NodeRangeRegistry = new HashMap<>();
 
     private final HashSet<PlayerEntity> ReceiveFromPlayerRegistry = new HashSet<>();
 
@@ -107,6 +113,8 @@ public class Channel implements Collection<NetworkNode>{
 
             // if we haven't thrown an exception, add the node to the graph.
             Graph.addVertex();
+
+            // rember where we can receave messages from
             for(ChunkReference chunk : node.getReceivingChunks()){
                 // Remember where the node is
                 if(!NodeReceivingRegistry.containsKey(chunk)){
@@ -114,6 +122,17 @@ public class Channel implements Collection<NetworkNode>{
                 }
 
                 NodeReceivingRegistry.get(chunk).add(node);
+
+            }
+
+            // remember where we can send messages to
+            for(ChunkReference chunk : node.getRangeChunks()){
+                // Remember where the node is
+                if(!NodeRangeRegistry.containsKey(chunk)){
+                    NodeRangeRegistry.put(chunk, new HashSet<>());
+                }
+
+                NodeRangeRegistry.get(chunk).add(node);
 
             }
         }
@@ -163,16 +182,29 @@ public class Channel implements Collection<NetworkNode>{
         //first, we add the node to the graph
         Graph.addVertex(node);
 
+        // create existing connections
+
         // then we establish outgoing connections from the node.
         for (ChunkReference chunk : node.getRangeChunks()){
             if (NodeReceivingRegistry.containsKey(chunk)){
-                for (NetworkNode node2 : NodeReceivingRegistry.get(chunk)){
-                    Graph.addEdge(node, node2);
+                for (NetworkNode target : NodeReceivingRegistry.get(chunk)){
+                    Graph.addEdge(node, target);
                 }
             }
         }
 
-        //now we register the location of the node
+        // then we establish incoming connections to the node.
+        for (ChunkReference chunk : node.getRangeChunks()){
+            if (NodeRangeRegistry.containsKey(chunk)){
+                for (NetworkNode sender : NodeRangeRegistry.get(chunk)){
+                    Graph.addEdge(sender, node);
+                }
+            }
+        }
+
+        // and range and receiving to the registries
+
+        //now we register where the node can receive messages from
         for(ChunkReference chunk : node.getReceivingChunks()){
             if (!NodeReceivingRegistry.containsKey(chunk)){
                 NodeReceivingRegistry.put(chunk, new HashSet<>());
@@ -180,15 +212,14 @@ public class Channel implements Collection<NetworkNode>{
             NodeReceivingRegistry.get(chunk).add(node);
         }
 
-
-
-        // now we establish incoming connections
-        for (NetworkNode node1 : Graph.vertexSet()){
-            // if receiving and range have chunks in common...
-            if(!Collections.disjoint(node.getReceivingChunks(), node1.getRangeChunks())){
-                Graph.addEdge(node1, node);
+        //now we register where the node can send messages to
+        for(ChunkReference chunk : node.getReceivingChunks()){
+            if (!NodeRangeRegistry.containsKey(chunk)){
+                NodeRangeRegistry.put(chunk, new HashSet<>());
             }
+            NodeRangeRegistry.get(chunk).add(node);
         }
+
 
         return true;
     }
@@ -284,7 +315,6 @@ public class Channel implements Collection<NetworkNode>{
      *         or null if no path is found.
      */
     public ArrayList<NetworkNode> DirectMessage(@NotNull NetworkNode origin, @NotNull NetworkNode destination){
-        PopulateShortestPathRegistry();
 
         if (!ShortestPathRegistry.containsKey(origin)) {
             return null;
@@ -292,6 +322,53 @@ public class Channel implements Collection<NetworkNode>{
 
         return ShortestPathRegistry.get(origin).get(destination);
     }
+
+
+    /**
+     * @param origin the origin node for the message
+     * @param target the player you want to receive the message.
+     * @return an ArrayList of nodes representing the shortest path from origin to chunk the target player is in,
+     *         or null if no path is found.
+     */
+    public ArrayList<NetworkNode> DirectToPlayerMessage(@NotNull NetworkNode origin, @NotNull ServerPlayerEntity target){
+        // make sure the target play can receive messages from this channel.
+        if(!SendToPlayerRegistry.contains(target)){
+            return null;
+        }
+
+        // identify the chunk the target is in.
+        ServerWorld world = target.getServerWorld();
+        ChunkReference targetChunk = new ChunkReference(world, target.getChunkPos());
+
+        // Check if this channel has that chunk in its range.
+        if(!NodeRangeRegistry.containsKey(targetChunk)) {
+            return null;
+        }
+
+        // check all possible paths.
+        @Nullable NetworkNode bestTarget = null;
+        int shortestPath = Integer.MAX_VALUE;
+
+        for (NetworkNode possibleTarget : NodeRangeRegistry.get(targetChunk)){
+            int possiblePath = DirectMessage(origin, possibleTarget).size();
+
+            if(possiblePath < shortestPath){
+                shortestPath = possiblePath;
+                bestTarget = possibleTarget;
+            }
+        }
+
+        // if best target is null then no path was found to reach the target.
+        if(bestTarget == null){
+            return null;
+        }
+
+        return DirectMessage(origin, bestTarget);
+
+
+
+    }
+
 
     /**
      * Retrieves all broadcast paths from the origin node to all other reachable nodes,

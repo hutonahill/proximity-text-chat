@@ -2,9 +2,11 @@ package com.proxtextchat.network;
 
 import com.proxtextchat.Message;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -23,7 +25,7 @@ public class ChannelManager implements Collection<Channel>{
     public static final ChannelManager Instance = new ChannelManager();
 
 
-    private static final HashMap<Identifier, Channel> Graphs = new HashMap<>();
+    private static final HashMap<Identifier, Channel> ChannelRegistry = new HashMap<>();
 
     /**
      * The name of the folder used to store Channel information
@@ -46,8 +48,8 @@ public class ChannelManager implements Collection<Channel>{
     public void addNode(@NotNull NetworkNode node){
         // check that we have the channel
 
-        if (Graphs.containsKey(node.getChannelId())){
-            Channel graph = Graphs.get(node.getChannelId());
+        if (ChannelRegistry.containsKey(node.getChannelId())){
+            Channel graph = ChannelRegistry.get(node.getChannelId());
 
             graph.add(node);
         }
@@ -55,7 +57,7 @@ public class ChannelManager implements Collection<Channel>{
             HashSet<NetworkNode> tempSet = new HashSet<>();
             tempSet.add(node);
             try {
-                Graphs.put(node.getChannelId(), new Channel(tempSet));
+                ChannelRegistry.put(node.getChannelId(), new Channel(tempSet));
             } catch (ChannelMismatch e) {
                 throw new RuntimeException(e);
             }
@@ -81,9 +83,9 @@ public class ChannelManager implements Collection<Channel>{
         }
 
         for(Identifier channelId : nodeRegistry.keySet()){
-            if(!Graphs.containsKey(channelId)){
+            if(!ChannelRegistry.containsKey(channelId)){
                 try {
-                    Graphs.put(channelId, new Channel(nodeRegistry.get(channelId)));
+                    ChannelRegistry.put(channelId, new Channel(nodeRegistry.get(channelId)));
                 }
                 // We can catch this because we have already sorted nodes by channel.
                 catch (ChannelMismatch e) {
@@ -91,7 +93,7 @@ public class ChannelManager implements Collection<Channel>{
                 }
             }
             else{
-                Graphs.get(channelId).addAll(nodeRegistry.get(channelId));
+                ChannelRegistry.get(channelId).addAll(nodeRegistry.get(channelId));
             }
         }
     }
@@ -101,13 +103,13 @@ public class ChannelManager implements Collection<Channel>{
      *             If the last node is removed from the channel, will remove the channel.
      */
     public void RemoveNode(@NotNull NetworkNode node){
-        if(Graphs.containsKey((node.getChannelId()))){
-            Channel graph = Graphs.get(node.getChannelId());
+        if(ChannelRegistry.containsKey((node.getChannelId()))){
+            Channel graph = ChannelRegistry.get(node.getChannelId());
             
             graph.remove(node);
 
             if (graph.isEmpty()){
-                Graphs.remove(node.getChannelId());
+                ChannelRegistry.remove(node.getChannelId());
             }
         }
     }
@@ -115,7 +117,7 @@ public class ChannelManager implements Collection<Channel>{
 
     // stores subscriptions.
     // every node has a unique id, this allows storing a set of methods to be fired whenever we send a message.
-    private static final HashMap<Integer, HashSet<Consumer<Message>>> NodeMessageEvent = new HashMap<>();
+    private final HashMap<Integer, HashSet<Consumer<Message>>> NodeMessageEvent = new HashMap<>();
 
     /**
      * Retrieves a set of nodes that are receiving messages in the specified chunk from all channels.
@@ -126,7 +128,7 @@ public class ChannelManager implements Collection<Channel>{
      */
     public @NotNull HashSet<NetworkNode> NodesReceivingInChunk(@NotNull ChunkReference chunk){
         try {
-            return NodesReceivingInChunk(chunk, Graphs.keySet());
+            return NodesReceivingInChunk(chunk, ChannelRegistry.keySet());
         } catch (ChannelMismatch e) {
             throw new RuntimeException(e);
         }
@@ -146,12 +148,12 @@ public class ChannelManager implements Collection<Channel>{
         // loop though the listed channels.
         for(Identifier channel : channels){
             // make sure the current channel is registered.
-            if(!Graphs.containsKey(channel)){
+            if(!ChannelRegistry.containsKey(channel)){
                 throw new ChannelMismatch("Could not find channel " + channel.toString());
             }
 
             // get the nodes that receive for this channel.
-            Map<ChunkReference, HashSet<NetworkNode>> nodeReceivingRegistry = Graphs.get(channel).getNodeReceivingRegistry();
+            Map<ChunkReference, HashSet<NetworkNode>> nodeReceivingRegistry = ChannelRegistry.get(channel).getNodeReceivingRegistry();
 
             // add those nodes that receive at chunk to the output set.
             if(nodeReceivingRegistry.containsKey(chunk)){
@@ -171,8 +173,8 @@ public class ChannelManager implements Collection<Channel>{
      * @throws ChannelMismatch if the channel is not registered with the ChannelManager.
      */
     public void addReceivingFromPlayer(@NotNull PlayerEntity player, @NotNull Identifier channel) throws ChannelMismatch {
-        if(Graphs.containsKey(channel)){
-            Channel graph = Graphs.get(channel);
+        if(ChannelRegistry.containsKey(channel)){
+            Channel graph = ChannelRegistry.get(channel);
 
             graph.addReceivingFromPlayer(player);
         }
@@ -189,8 +191,8 @@ public class ChannelManager implements Collection<Channel>{
      * @throws ChannelMismatch if the channel is not registered with the ChannelManager.
      */
     public void addSendToPlayer(@NotNull PlayerEntity player, @NotNull Identifier channel) throws ChannelMismatch {
-        if(Graphs.containsKey(channel)){
-            Channel graph = Graphs.get(channel);
+        if(ChannelRegistry.containsKey(channel)){
+            Channel graph = ChannelRegistry.get(channel);
 
             graph.addSendToPlayer(player);
         }
@@ -233,8 +235,8 @@ public class ChannelManager implements Collection<Channel>{
      * @param player the player to remove.
      */
     public void removeReceivingFromPlayerEverywhere(@NotNull PlayerEntity player) {
-        for(Identifier channel : Graphs.keySet()){
-            Graphs.get(channel).removeReceivingFromPlayer(player);
+        for(Identifier channel : ChannelRegistry.keySet()){
+            ChannelRegistry.get(channel).removeReceivingFromPlayer(player);
         }
     }
 
@@ -244,8 +246,8 @@ public class ChannelManager implements Collection<Channel>{
      * @param player the player to remove.
      */
     public void removeSendToPlayerEverywhere(@NotNull PlayerEntity player){
-        for(Identifier channel : Graphs.keySet()){
-            Graphs.get(channel).removeReceivingFromPlayer(player);
+        for(Identifier channel : ChannelRegistry.keySet()){
+            ChannelRegistry.get(channel).removeReceivingFromPlayer(player);
         }
     }
 
@@ -258,8 +260,8 @@ public class ChannelManager implements Collection<Channel>{
      * @throws ChannelMismatch if the channel is not registered with the ChannelManager.
      */
     public void removeReceivingFromPlayer(@NotNull PlayerEntity player, @NotNull Identifier channel) throws ChannelMismatch{
-        if(Graphs.containsKey(channel)){
-            Channel graph = Graphs.get(channel);
+        if(ChannelRegistry.containsKey(channel)){
+            Channel graph = ChannelRegistry.get(channel);
 
             graph.removeReceivingFromPlayer(player);
         }
@@ -276,8 +278,8 @@ public class ChannelManager implements Collection<Channel>{
      * @throws ChannelMismatch if the channel is not registered with the ChannelManager.
      */
     public void removeSendToPlayer(@NotNull PlayerEntity player, @NotNull Identifier channel) throws ChannelMismatch{
-        if(Graphs.containsKey(channel)){
-            Channel graph = Graphs.get(channel);
+        if(ChannelRegistry.containsKey(channel)){
+            Channel graph = ChannelRegistry.get(channel);
 
             graph.removeSendToPlayer(player);
         }
@@ -322,8 +324,8 @@ public class ChannelManager implements Collection<Channel>{
      */
     public @NotNull HashSet<Identifier> getReceivingFromChannelsForPlayer(@NotNull PlayerEntity player){
         HashSet<Identifier> output = new HashSet<>();
-        for(Identifier channel : Graphs.keySet()){
-            if(Graphs.get(channel).hasReceivingFromPlayer(player)){
+        for(Identifier channel : ChannelRegistry.keySet()){
+            if(ChannelRegistry.get(channel).hasReceivingFromPlayer(player)){
                 output.add(channel);
             }
         }
@@ -339,8 +341,8 @@ public class ChannelManager implements Collection<Channel>{
      */
     public @NotNull HashSet<Identifier> getSendToChannelsForPlayer(@NotNull PlayerEntity player){
         HashSet<Identifier> output = new HashSet<>();
-        for(Identifier channel : Graphs.keySet()){
-            if(Graphs.get(channel).hasSendToPlayer(player)){
+        for(Identifier channel : ChannelRegistry.keySet()){
+            if(ChannelRegistry.get(channel).hasSendToPlayer(player)){
                 output.add(channel);
             }
         }
@@ -349,7 +351,7 @@ public class ChannelManager implements Collection<Channel>{
     }
 
     public Set<Channel> getChannelSet(){
-        return Set.copyOf(Graphs.values());
+        return Set.copyOf(ChannelRegistry.values());
     }
 
 
@@ -362,7 +364,7 @@ public class ChannelManager implements Collection<Channel>{
      * @param node the network node to subscribe to.
      * @param method the method to be invoked when a message is received by the node.
      */
-    public static void SubscribeToNodeMessage(@NotNull NetworkNode node, @NotNull Consumer<Message> method){
+    public void SubscribeToNodeMessage(@NotNull NetworkNode node, @NotNull Consumer<Message> method){
         // if there is no set in this slot, add one to avoid a nullptr
         if (!NodeMessageEvent.containsKey(node.getID())){
             NodeMessageEvent.put(node.getID(), new HashSet<>());
@@ -380,7 +382,7 @@ public class ChannelManager implements Collection<Channel>{
      * @param node the network node to unsubscribe from.
      * @param method the method to be removed from the subscription list.
      */
-    public static void UnsubscribeToNodeMessage(@NotNull NetworkNode node, @NotNull Consumer<Message> method){
+    public void UnsubscribeToNodeMessage(@NotNull NetworkNode node, @NotNull Consumer<Message> method){
         if(NodeMessageEvent.containsKey(node.getID())){
             NodeMessageEvent.get(node.getID()).remove(method);
             // if a slot is empty, remove it from the registry to keep our trigger maximally efficient.
@@ -398,21 +400,21 @@ public class ChannelManager implements Collection<Channel>{
      * @param destination the destination node to which the message is sent.
      * @param message the message to be sent.
      * @return {@code true} if the message was successfully delivered;
-     * {@code false} if no valid path exists between the nodes.
+     *         {@code false} if no valid path exists between the nodes.
      * @throws ChannelMismatch if the source and destination nodes are not in the same channel.
      * @throws IllegalArgumentException if the source node's channel is not registered with the ChannelManager or
      * the source/destination node is not found in the channel.
      */
-    public static boolean directMessage(@NotNull NetworkNode source, @NotNull NetworkNode destination, @NotNull Message message) throws ChannelMismatch {
+    public boolean directMessage(@NotNull NetworkNode source, @NotNull NetworkNode destination, @NotNull Message message) throws ChannelMismatch {
         if (source.getChannelId() != destination.getChannelId()){
             throw new ChannelMismatch("Nodes must have the same channel to send messages between them.");
         }
 
-        if(!Graphs.containsKey(source.getChannelId())){
+        if(!ChannelRegistry.containsKey(source.getChannelId())){
             throw new IllegalArgumentException("Channel not registered.");
         }
 
-        Channel graph = Graphs.get(source.getChannelId());
+        Channel graph = ChannelRegistry.get(source.getChannelId());
 
         if (graph.contains(source)){
             throw new IllegalArgumentException("source node not found.");
@@ -422,7 +424,7 @@ public class ChannelManager implements Collection<Channel>{
             throw new IllegalArgumentException("destination node not found.");
         }
 
-        ArrayList<NetworkNode> path = graph.DirectMessage(source, destination);
+        @Nullable ArrayList<NetworkNode> path = graph.DirectMessage(source, destination);
         
         if(path != null){
             message.AddTrace(path);
@@ -437,6 +439,42 @@ public class ChannelManager implements Collection<Channel>{
     }
 
     /**
+     * Sends a direct message from a source node to a target player, provided the target is in the range of the chanel.
+     *
+     * @param source the source node from which the message is sent.
+     * @param target the player you are sending the message to.
+     * @param message the message to be sent.
+     * @return {@code true} if the message was successfully delivered;
+     *         {@code false} if no valid path exists between the nodes.
+     * @throws IllegalArgumentException if the source node's channel is not registered with the ChannelManager.
+     */
+    public boolean directToPlayerMessage(@NotNull NetworkNode source, @NotNull ServerPlayerEntity target, @NotNull Message message){
+
+        if(!ChannelRegistry.containsKey(source.getChannelId())){
+            throw new IllegalArgumentException("Channel not registered.");
+        }
+
+        Channel graph = ChannelRegistry.get(source.getChannelId());
+
+        if (graph.contains(source)){
+            throw new IllegalArgumentException("source node not found.");
+        }
+
+        @Nullable ArrayList<NetworkNode> path = graph.DirectToPlayerMessage(source,target);
+
+        if(path == null){
+            return false;
+        }
+
+        message.AddTrace(path);
+
+        TriggerNodeMessage(path.getLast(), message);
+
+        return true;
+
+    }
+
+    /**
      * Broadcasts a message from a source node to all nodes in the same channel that it is connected to.
      *
      * @param source the source node from which the message is broadcast.
@@ -445,11 +483,11 @@ public class ChannelManager implements Collection<Channel>{
      * the source node is not found in the channel.
      */
     public void broadcastMessage(@NotNull NetworkNode source, Message message){
-        if(!Graphs.containsKey(source.getChannelId())){
+        if(!ChannelRegistry.containsKey(source.getChannelId())){
             throw new IllegalArgumentException("Channel not registered.");
         }
 
-        Channel graph = Graphs.get(source.getChannelId());
+        Channel graph = ChannelRegistry.get(source.getChannelId());
 
         if (graph.contains(source)){
             throw new IllegalArgumentException("source node not found.");
@@ -468,7 +506,7 @@ public class ChannelManager implements Collection<Channel>{
     }
 
 
-    private static void TriggerNodeMessage(@NotNull NetworkNode node, @NotNull Message message){
+    private void TriggerNodeMessage(@NotNull NetworkNode node, @NotNull Message message){
         if(NodeMessageEvent.containsKey(node.getID())){
             for (Consumer<Message> method : NodeMessageEvent.get(node.getID())){
                 method.accept(message);
@@ -476,7 +514,7 @@ public class ChannelManager implements Collection<Channel>{
         }
 
         // now deliver the messages to players
-        Set<PlayerEntity> registeredPlayers = Graphs.get(node.getChannelId()).getSendToPlayerRegistry();
+        Set<PlayerEntity> registeredPlayers = ChannelRegistry.get(node.getChannelId()).getSendToPlayerRegistry();
 
         for(PlayerEntity player : registeredPlayers){
             // filter out offline players
@@ -506,7 +544,7 @@ public class ChannelManager implements Collection<Channel>{
      */
     @Override
     public int size() {
-        return Graphs.size();
+        return ChannelRegistry.size();
     }
 
     /**
@@ -516,7 +554,7 @@ public class ChannelManager implements Collection<Channel>{
      */
     @Override
     public boolean isEmpty() {
-        return Graphs.isEmpty();
+        return ChannelRegistry.isEmpty();
     }
 
     /**
@@ -539,7 +577,7 @@ public class ChannelManager implements Collection<Channel>{
     public boolean contains(Object o) {
         //TODO: why is this suspicious?
         //noinspection SuspiciousMethodCalls
-        return Graphs.containsValue(o);
+        return ChannelRegistry.containsValue(o);
     }
 
     /**
@@ -553,7 +591,7 @@ public class ChannelManager implements Collection<Channel>{
     @NotNull
     @Override
     public Iterator<Channel> iterator() {
-        return Graphs.values().iterator();
+        return ChannelRegistry.values().iterator();
     }
 
     /**
@@ -579,7 +617,7 @@ public class ChannelManager implements Collection<Channel>{
     @NotNull
     @Override
     public Object @NotNull [] toArray() {
-        return Graphs.values().toArray();
+        return ChannelRegistry.values().toArray();
     }
 
     /**
@@ -633,7 +671,7 @@ public class ChannelManager implements Collection<Channel>{
     @NotNull
     @Override
     public <T> T @NotNull [] toArray(@NotNull T @NotNull [] a) {
-        return Graphs.values().toArray(a);
+        return ChannelRegistry.values().toArray(a);
     }
 
     /**
@@ -671,12 +709,12 @@ public class ChannelManager implements Collection<Channel>{
      */
     @Override
     public boolean add(Channel channel) {
-        if(Graphs.containsKey(channel.getID())){
+        if(ChannelRegistry.containsKey(channel.getID())){
 
-            Graphs.get(channel.getID()).MergeChannels(channel);
+            ChannelRegistry.get(channel.getID()).MergeChannels(channel);
         }
         else{
-            Graphs.put(channel.getID(), channel);
+            ChannelRegistry.put(channel.getID(), channel);
         }
 
         return true;
@@ -712,7 +750,7 @@ public class ChannelManager implements Collection<Channel>{
 
         // If the channel exists, remove it using its Identifier key
         Identifier id = channel.getID();
-        return Graphs.remove(id, channel); // Removes only if the value matches
+        return ChannelRegistry.remove(id, channel); // Removes only if the value matches
     }
 
 
@@ -736,7 +774,7 @@ public class ChannelManager implements Collection<Channel>{
      */
     @Override
     public boolean containsAll(@NotNull Collection<?> c) {
-        return Graphs.values().containsAll(c);
+        return ChannelRegistry.values().containsAll(c);
     }
 
     /**
@@ -831,11 +869,11 @@ public class ChannelManager implements Collection<Channel>{
     public boolean retainAll(@NotNull Collection<?> c) {
         boolean changed = false;
 
-        for (Identifier id : Graphs.keySet()) {
-            Channel channel = Graphs.get(id);
+        for (Identifier id : ChannelRegistry.keySet()) {
+            Channel channel = ChannelRegistry.get(id);
 
             if (channel != null && !c.contains(channel)) {
-                Graphs.remove(id);
+                ChannelRegistry.remove(id);
                 changed = true;
             }
         }
@@ -852,6 +890,6 @@ public class ChannelManager implements Collection<Channel>{
      */
     @Override
     public void clear() {
-        Graphs.clear();
+        ChannelRegistry.clear();
     }
 }

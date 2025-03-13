@@ -199,7 +199,7 @@ public class ProxChatBaseMod implements ModInitializer {
 
         SaveChannelData();
 
-        throw new RuntimeException("CrashPlz");
+        //throw new RuntimeException("CrashPlz");
 
     }
 

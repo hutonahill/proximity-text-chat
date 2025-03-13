@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.GlobalPos;
 import net.minecraft.world.World;
@@ -47,6 +48,10 @@ public class ChunkReference {
      */
     public ChunkReference(WorldChunk chunk){
         globalPos = new GlobalPos(chunk.getWorld().getRegistryKey(), chunk.getPos().getBlockPos(0,0,0));
+    }
+
+    public ChunkReference(ServerWorld world, ChunkPos pos){
+        this(world.getRegistryKey(), pos);
     }
 
     public RegistryKey<World> getWorldKey(){
