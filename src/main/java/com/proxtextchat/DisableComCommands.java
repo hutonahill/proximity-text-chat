@@ -78,7 +78,9 @@ public class DisableComCommands {
         int chunkY = sender.getChunkPos().z;
         ChunkReference playerChunk = new ChunkReference(world.getChunk(chunkX, chunkY));
 
-
+        //TODO: via proximity
+        
+        // via network
         HashSet<NetworkNode> playerNodes;
         try {
             // get the nodes in the chunk the player is in, for the channels the user is registered to send to.

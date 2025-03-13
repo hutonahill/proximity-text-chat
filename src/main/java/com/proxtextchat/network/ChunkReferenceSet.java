@@ -10,7 +10,7 @@ import java.util.*;
  * An AbstractSet of WorldChunks that can be easily converted to NBT data.
  */
 public class ChunkReferenceSet extends AbstractSet<ChunkReference> {
-//TODO: can this be removed?
+// We need this class to provide the CODEC
 
     private final Set<ChunkReference> Chunks;
 

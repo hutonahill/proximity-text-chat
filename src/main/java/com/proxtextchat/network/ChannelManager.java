@@ -1,5 +1,7 @@
 package com.proxtextchat.network;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.proxtextchat.Message;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -424,7 +426,7 @@ public class ChannelManager implements Collection<Channel>{
             throw new IllegalArgumentException("destination node not found.");
         }
 
-        @Nullable ArrayList<NetworkNode> path = graph.DirectMessage(source, destination);
+        @Nullable ImmutableList<NetworkNode> path = graph.DirectMessage(source, destination);
         
         if(path != null){
             message.AddTrace(path);
@@ -460,7 +462,7 @@ public class ChannelManager implements Collection<Channel>{
             throw new IllegalArgumentException("source node not found.");
         }
 
-        @Nullable ArrayList<NetworkNode> path = graph.DirectToPlayerMessage(source,target);
+        @Nullable ImmutableList<NetworkNode> path = graph.DirectToPlayerMessage(source,target);
 
         if(path == null){
             return false;
@@ -493,7 +495,7 @@ public class ChannelManager implements Collection<Channel>{
             throw new IllegalArgumentException("source node not found.");
         }
 
-        HashMap<NetworkNode, ArrayList<NetworkNode>> paths = graph.BroadcastPaths(source);
+        ImmutableMap<NetworkNode, ImmutableList<NetworkNode>> paths = graph.BroadcastPaths(source);
 
         // we send a message to each node the source is connected to.
         for (NetworkNode destination : paths.keySet()){

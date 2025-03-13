@@ -77,10 +77,12 @@ public class ChunkReference {
      */
     public @Nullable WorldChunk getWorldChunk(@NotNull MinecraftServer server){
         World world = server.getWorld(globalPos.dimension());
-        return world.getWorldChunk(globalPos.pos()); //TODO: not sure what to do about this.
-                                                     // Throw an exception?
-                                                     // Return a possibly null value?
-                                                     // I miss C#.
+        if (world != null) {
+            return world.getWorldChunk(globalPos.pos());
+        }
+        else{
+            return null;
+        }
     }
 
 }

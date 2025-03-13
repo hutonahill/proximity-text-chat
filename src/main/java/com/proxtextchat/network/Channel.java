@@ -1,5 +1,7 @@
 package com.proxtextchat.network;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMultimap;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -8,12 +10,16 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DirectedMultigraph;
+import com.google.common.collect.ImmutableMap;
 
+import java.lang.reflect.Array;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.function.IntFunction;
 
 /**
@@ -237,7 +243,7 @@ public class Channel implements Collection<NetworkNode>{
 
         if(output == true){
             // finally, our ShortedPathRegistry is now out of date and will need to be recalculated.
-            ShortestPathRegistry = new HashMap<>();
+            ShortestPathRegistry = new ConcurrentHashMap<>();
 
             PopulateShortestPathRegistry();
         }
@@ -302,8 +308,8 @@ public class Channel implements Collection<NetworkNode>{
         return output;
     }
 
-    private HashMap<NetworkNode /*origin*/, HashMap<NetworkNode/*destination*/, ArrayList<NetworkNode>/*path*/>>
-            ShortestPathRegistry = new HashMap<>();
+    private ConcurrentHashMap<NetworkNode /*origin*/, ImmutableMap<NetworkNode/*destination*/, ImmutableList<NetworkNode>/*path*/>>
+            ShortestPathRegistry = new ConcurrentHashMap<>();
 
     /**
      * Retrieves the shortest path between the origin and destination nodes, if available,
@@ -314,7 +320,7 @@ public class Channel implements Collection<NetworkNode>{
      * @return an ArrayList of nodes representing the shortest path from origin to destination,
      *         or null if no path is found.
      */
-    public ArrayList<NetworkNode> DirectMessage(@NotNull NetworkNode origin, @NotNull NetworkNode destination){
+    public ImmutableList<NetworkNode> DirectMessage(@NotNull NetworkNode origin, @NotNull NetworkNode destination){
 
         if (!ShortestPathRegistry.containsKey(origin)) {
             return null;
@@ -330,7 +336,7 @@ public class Channel implements Collection<NetworkNode>{
      * @return an ArrayList of nodes representing the shortest path from origin to chunk the target player is in,
      *         or null if no path is found.
      */
-    public ArrayList<NetworkNode> DirectToPlayerMessage(@NotNull NetworkNode origin, @NotNull ServerPlayerEntity target){
+    public ImmutableList<NetworkNode> DirectToPlayerMessage(@NotNull NetworkNode origin, @NotNull ServerPlayerEntity target){
         // make sure the target play can receive messages from this channel.
         if(!SendToPlayerRegistry.contains(target)){
             return null;
@@ -378,7 +384,7 @@ public class Channel implements Collection<NetworkNode>{
      * @return a HashMap mapping each reachable node to its shortest path from the origin node,
      *         or null if no paths are found.
      */
-    public HashMap<NetworkNode, ArrayList<NetworkNode>> BroadcastPaths(@NotNull NetworkNode origin){
+    public ImmutableMap<NetworkNode, ImmutableList<NetworkNode>> BroadcastPaths(@NotNull NetworkNode origin){
         PopulateShortestPathRegistry();
         if (!ShortestPathRegistry.containsKey(origin)){
             return null;
@@ -388,34 +394,48 @@ public class Channel implements Collection<NetworkNode>{
     }
 
 
-    //TODO: figure threading and implement here.
+    private final int coreCount = Runtime.getRuntime().availableProcessors();
+    private final ExecutorService executor = Executors.newFixedThreadPool(Math.max(1, coreCount - 1));
     private void PopulateShortestPathRegistry(){
         if (ShortestPathRegistry.isEmpty()){
 
+            List<Future<Pair<NetworkNode, ImmutableMap<NetworkNode, ImmutableList<NetworkNode>>>>> futures = new ArrayList<>();
 
-
-            // each loop on this node is independent, not dependent on the previous,
+            // each iteration is independent, not dependent on the previous,
             // so we shouldn't have issues threading this process
             for (NetworkNode source : Graph.vertexSet()) {
-
-                ShortestPathRegistry.put(source, computeShortestPaths(source));
+                Future<Pair<NetworkNode, ImmutableMap<NetworkNode, ImmutableList<NetworkNode>>>> future = executor
+                        .submit(() -> Pair.of(source, computeShortestPaths(source)));
+                futures.add(future);
             }
+
+            // Wait for all tasks to complete
+            for (Future<Pair<NetworkNode, ImmutableMap<NetworkNode, ImmutableList<NetworkNode>>>> future : futures) {
+                try {
+                    Pair<NetworkNode, ImmutableMap<NetworkNode, ImmutableList<NetworkNode>>> value = future.get();
+                    ShortestPathRegistry.put(value.getLeft(), value.getRight());
+                } catch (InterruptedException | ExecutionException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            executor.shutdown();
         }
     }
 
-    private @NotNull HashMap<NetworkNode, ArrayList<NetworkNode>> computeShortestPaths(@NotNull NetworkNode source) {
+    private @NotNull ImmutableMap<NetworkNode, ImmutableList<NetworkNode>> computeShortestPaths(@NotNull NetworkNode source) {
         if (source.getChannelId() != ID){
-            return new HashMap<>();
+            return ImmutableMap.of();
         }
         else if (Graph.containsVertex(source)){
-            return new HashMap<>();
+            return ImmutableMap.of();
         }
 
         // Map to store the shortest path from the source to each node
-        HashMap<NetworkNode, ArrayList<NetworkNode>> shortestPaths = new HashMap<>();
+        Map<NetworkNode, ImmutableList<NetworkNode>> shortestPaths = new HashMap<>();
 
         // Map to store the minimum distance from the source to each node
-        HashMap<NetworkNode, Double> distances = new HashMap<>();
+        Map<NetworkNode, Double> distances = new HashMap<>();
 
         // Priority queue to process nodes in order of distance
         PriorityQueue<NetworkNode> priorityQueue = new PriorityQueue<>(Comparator.comparingDouble(distances::get));
@@ -423,7 +443,7 @@ public class Channel implements Collection<NetworkNode>{
         // Initialize distances to infinity and paths to empty
         for (NetworkNode node : Graph.vertexSet()) {
             distances.put(node, Double.POSITIVE_INFINITY);
-            shortestPaths.put(node, new ArrayList<>());
+            shortestPaths.put(node, ImmutableList.of());
         }
 
         // Set the distance to the source as 0
@@ -448,8 +468,11 @@ public class Channel implements Collection<NetworkNode>{
                     distances.put(neighbor, newDistance);
 
                     // Update the path to the neighbor
-                    ArrayList<NetworkNode> path = new ArrayList<>(shortestPaths.get(current));
-                    path.add(neighbor);
+                    ArrayList<NetworkNode> initialList = new ArrayList<>(shortestPaths.get(current));
+                    initialList.add(neighbor);
+                    ImmutableList<NetworkNode> path = ImmutableList.copyOf(initialList);
+
+
                     shortestPaths.put(neighbor, path);
 
                     priorityQueue.add(neighbor);
@@ -457,7 +480,7 @@ public class Channel implements Collection<NetworkNode>{
             }
         }
 
-        return shortestPaths;
+        return ImmutableMap.copyOf(shortestPaths);
     }
 
     public @NotNull Map<ChunkReference, HashSet<NetworkNode>> getNodeReceivingRegistry(){
@@ -723,7 +746,7 @@ public class Channel implements Collection<NetworkNode>{
 
         if(output == true){
             // finally, our ShortedPathRegistry is now out of date and will need to be recalculated.
-            ShortestPathRegistry = new HashMap<>();
+            ShortestPathRegistry = new ConcurrentHashMap<>();
 
             PopulateShortestPathRegistry();
         }
