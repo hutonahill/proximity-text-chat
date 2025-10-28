@@ -50,6 +50,11 @@ public class ChunkReference {
         globalPos = new GlobalPos(chunk.getWorld().getRegistryKey(), chunk.getPos().getBlockPos(0,0,0));
     }
 
+    /**
+     *
+     * @param world The world the chunk is in.
+     * @param pos the chunk pos of the target chunk.
+     */
     public ChunkReference(ServerWorld world, ChunkPos pos){
         this(world.getRegistryKey(), pos);
     }
@@ -85,4 +90,20 @@ public class ChunkReference {
         }
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        // Check if comparing to itself
+        if (this == obj) return true;
+
+        // Check for null or mismatched type
+        if (obj == null || getClass() != obj.getClass()) return false;
+
+        // Cast and compare underlying GlobalPos
+        ChunkReference other = (ChunkReference) obj;
+        return globalPos.equals(other.globalPos);
+    }
+
+    public int hashCode() {
+        return globalPos.hashCode();
+    }
 }

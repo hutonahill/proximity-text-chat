@@ -51,14 +51,14 @@ public class DisableComCommands {
                 )
         );
 
-        // need to handle
+        // TODO: need to handle other commands.
+
+        // /say, /me, /say, /teammsg, /tellraw, /tm
     }
 
     private static final ChannelManager manager = ChannelManager.Instance;
 
     private static int newDirectCommand(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
-
-
 
         Collection<ServerPlayerEntity> targets = EntityArgumentType.getPlayers(context, "targets");
         String message = StringArgumentType.getString(context, "message");
@@ -70,36 +70,48 @@ public class DisableComCommands {
             return 0;
         }
 
-        //TODO: need to check if the gamerule is enabled.
+        MinecraftServer server =sender.getServer();
 
-        ServerWorld world = sender.getServerWorld();
-
-        int chunkX = sender.getChunkPos().x;
-        int chunkY = sender.getChunkPos().z;
-        ChunkReference playerChunk = new ChunkReference(world.getChunk(chunkX, chunkY));
-
-        //TODO: via proximity
-        
-        // via network
-        HashSet<NetworkNode> playerNodes;
-        try {
-            // get the nodes in the chunk the player is in, for the channels the user is registered to send to.
-            playerNodes = manager.NodesReceivingInChunk(playerChunk,
-                    manager.getReceivingFromChannelsForPlayer(sender));
-        } catch (ChannelMismatch e) {
-            throw new RuntimeException(e);
+        if(server == null){
+            context.getSource().sendFeedback(
+                    () -> Text.literal("Cannot find server").formatted(Formatting.RED),
+                    false);
+            return 0;
         }
 
+        if(server.getGameRules().get(ENABLE_PROXIMITY_TEXT_CHAT).get()){
+            ServerWorld world = sender.getServerWorld();
 
-        for(ServerPlayerEntity player : targets){
-            for(NetworkNode node : playerNodes){
-                manager.directToPlayerMessage(node, player, new Message(sender, getAlias.apply(sender), Text.literal(message)));
+            int chunkX = sender.getChunkPos().x;
+            int chunkY = sender.getChunkPos().z;
+            ChunkReference playerChunk = new ChunkReference(world.getChunk(chunkX, chunkY));
+
+            //TODO: via proximity
+
+
+            // via network
+            HashSet<NetworkNode> playerNodes;
+            try {
+                // get the nodes in the chunk the player is in, for the channels the user is registered to send to.
+                playerNodes = manager.NodesReceivingInChunk(playerChunk,
+                        manager.getReceivingFromChannelsForPlayer(sender));
+            } catch (ChannelMismatch e) {
+                throw new RuntimeException(e);
             }
+
+
+            for(ServerPlayerEntity player : targets){
+                for(NetworkNode node : playerNodes){
+                    manager.directToPlayerMessage(node, player, new Message(sender, getAlias.apply(sender), Text.literal(message)));
+                }
+            }
+
+            return Command.SINGLE_SUCCESS;
         }
+        else{
 
-        return Command.SINGLE_SUCCESS;
-
-
+            // TODO: we need to implement the standard command here.
+        }
     }
 
 
