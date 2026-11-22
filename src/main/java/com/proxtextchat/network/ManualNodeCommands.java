@@ -37,6 +37,7 @@ public class ManualNodeCommands {
     private static int SampleMethod(CommandContext<ServerCommandSource> context) throws CommandSyntaxException{
         Collection<ServerPlayerEntity> targets = EntityArgumentType.getPlayers(context, "targets");
         String message = StringArgumentType.getString(context, "message");
+        return 0;
     }
 
 }

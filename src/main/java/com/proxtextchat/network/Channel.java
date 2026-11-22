@@ -1,12 +1,10 @@
 package com.proxtextchat.network;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMultimap;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
@@ -16,8 +14,8 @@ import org.jetbrains.annotations.Nullable;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DirectedMultigraph;
 import com.google.common.collect.ImmutableMap;
+import com.proxtextchat.ProxChatBaseMod;
 
-import java.lang.reflect.Array;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.IntFunction;
@@ -64,7 +62,7 @@ public class Channel implements Collection<NetworkNode>{
 
         for(NetworkNode node : nodes){
             if(channel != null){
-                if(node.getChannelId() != channel){
+                if(!node.getChannelId().equals(channel)){
                     return DataResult.error(()->"Channel mismatch in the node list. All nodes must have the same channel.");
                 }
             }
@@ -118,9 +116,9 @@ public class Channel implements Collection<NetworkNode>{
             }
 
             // if we haven't thrown an exception, add the node to the graph.
-            Graph.addVertex();
+            Graph.addVertex(node);
 
-            // rember where we can receave messages from
+            // remember where we can receive messages from
             for(ChunkReference chunk : node.getReceivingChunks()){
                 // Remember where the node is
                 if(!NodeReceivingRegistry.containsKey(chunk)){
@@ -180,8 +178,13 @@ public class Channel implements Collection<NetworkNode>{
             return false;
         }
 
+        // if this is the first node to add then we need to set this channel's id.
+        if(ID == null){
+            ID = node.getChannelId();
+        }
+
         // make sure the node is in the right channel.
-        if(node.getChannelId() != ID){
+        else if(!node.getChannelId().equals(ID)){
             return false;
         }
 
@@ -190,7 +193,7 @@ public class Channel implements Collection<NetworkNode>{
 
         // create existing connections
 
-        // then we establish outgoing connections from the node.
+        // then we establish connections from the new node to existing nodes
         for (ChunkReference chunk : node.getRangeChunks()){
             if (NodeReceivingRegistry.containsKey(chunk)){
                 for (NetworkNode target : NodeReceivingRegistry.get(chunk)){
@@ -199,8 +202,8 @@ public class Channel implements Collection<NetworkNode>{
             }
         }
 
-        // then we establish incoming connections to the node.
-        for (ChunkReference chunk : node.getRangeChunks()){
+        // then we establish connections from existing nodes to the new node.
+        for (ChunkReference chunk : node.getReceivingChunks()){
             if (NodeRangeRegistry.containsKey(chunk)){
                 for (NetworkNode sender : NodeRangeRegistry.get(chunk)){
                     Graph.addEdge(sender, node);
@@ -219,7 +222,7 @@ public class Channel implements Collection<NetworkNode>{
         }
 
         //now we register where the node can send messages to
-        for(ChunkReference chunk : node.getReceivingChunks()){
+        for(ChunkReference chunk : node.getRangeChunks()){
             if (!NodeRangeRegistry.containsKey(chunk)){
                 NodeRangeRegistry.put(chunk, new HashSet<>());
             }
@@ -256,7 +259,7 @@ public class Channel implements Collection<NetworkNode>{
      * @param channel Another Channel you wish to combine with this channel
      */
     public void MergeChannels(@NotNull Channel channel){
-        if(channel.getID() == ID && channel != this){
+        if(channel.getID().equals(ID) && channel != this){
             this.addAll(channel.getNodeList());
         }
     }
@@ -283,6 +286,38 @@ public class Channel implements Collection<NetworkNode>{
         }
 
         Graph.removeVertex(node);
+
+
+
+        for (ChunkReference chunk : node.getRangeChunks()){
+            if(NodeRangeRegistry.get(chunk) == null){
+                ProxChatBaseMod.LOGGER.warn(
+                        "Range Registry for Channel {} should have contained a key for chunk {} but it returned null when queried.",
+                        this.getID(), chunk
+                );
+            }
+            else{
+                NodeRangeRegistry.get(chunk).remove(node);
+                if(NodeRangeRegistry.get(chunk).isEmpty()){
+                    NodeRangeRegistry.remove(chunk);
+                }
+            }
+        }
+
+        for (ChunkReference chunk : node.getReceivingChunks()){
+            if(NodeReceivingRegistry.get(chunk) == null){
+                ProxChatBaseMod.LOGGER.warn(
+                        "Receiving Registry for Channel {} should have contained a key for chunk {} but it returned null when queried.",
+                        this.getID(), chunk
+                );
+            }
+            else{
+                NodeReceivingRegistry.get(chunk).remove(node);
+                if(NodeReceivingRegistry.get(chunk).isEmpty()){
+                    NodeReceivingRegistry.remove(chunk);
+                }
+            }
+        }
 
         return true;
     }
@@ -395,39 +430,53 @@ public class Channel implements Collection<NetworkNode>{
 
 
     private final int coreCount = Runtime.getRuntime().availableProcessors();
-    private final ExecutorService executor = Executors.newFixedThreadPool(Math.max(1, coreCount - 1));
+
     private void PopulateShortestPathRegistry(){
         if (ShortestPathRegistry.isEmpty()){
 
-            List<Future<Pair<NetworkNode, ImmutableMap<NetworkNode, ImmutableList<NetworkNode>>>>> futures = new ArrayList<>();
+            ExecutorService executor = Executors.newFixedThreadPool(Math.max(1, coreCount - 1));
+            try{
+                List<Future<Pair<NetworkNode, ImmutableMap<NetworkNode, ImmutableList<NetworkNode>>>>> futures = new ArrayList<>();
 
-            // each iteration is independent, not dependent on the previous,
-            // so we shouldn't have issues threading this process
-            for (NetworkNode source : Graph.vertexSet()) {
-                Future<Pair<NetworkNode, ImmutableMap<NetworkNode, ImmutableList<NetworkNode>>>> future = executor
-                        .submit(() -> Pair.of(source, computeShortestPaths(source)));
-                futures.add(future);
-            }
+                // each iteration is independent, not dependent on the previous,
+                // so we shouldn't have issues threading this process
+                for (NetworkNode source : Graph.vertexSet()) {
+                    Future<Pair<NetworkNode, ImmutableMap<NetworkNode, ImmutableList<NetworkNode>>>> future = executor
+                            .submit(() -> Pair.of(source, computeShortestPaths(source)));
+                    futures.add(future);
+                }
 
-            // Wait for all tasks to complete
-            for (Future<Pair<NetworkNode, ImmutableMap<NetworkNode, ImmutableList<NetworkNode>>>> future : futures) {
-                try {
+                // Wait for all tasks to complete
+                for (Future<Pair<NetworkNode, ImmutableMap<NetworkNode, ImmutableList<NetworkNode>>>> future : futures) {
+
                     Pair<NetworkNode, ImmutableMap<NetworkNode, ImmutableList<NetworkNode>>> value = future.get();
                     ShortestPathRegistry.put(value.getLeft(), value.getRight());
-                } catch (InterruptedException | ExecutionException e) {
-                    throw new RuntimeException(e);
+
                 }
             }
+            catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(exception);
+            }
+            catch (ExecutionException exception) {
+                throw new RuntimeException(exception.getCause());
+            }
+            finally {
+                executor.shutdown();
+            }
 
-            executor.shutdown();
+
+
         }
     }
 
     private @NotNull ImmutableMap<NetworkNode, ImmutableList<NetworkNode>> computeShortestPaths(@NotNull NetworkNode source) {
-        if (source.getChannelId() != ID){
+        if (!source.getChannelId().equals(ID)){
             return ImmutableMap.of();
         }
-        else if (Graph.containsVertex(source)){
+
+        // can not compute the shortest path for a node not in the list.
+        else if (!Graph.containsVertex(source)){
             return ImmutableMap.of();
         }
 
@@ -449,9 +498,9 @@ public class Channel implements Collection<NetworkNode>{
         // Set the distance to the source as 0
         distances.put(source, 0.0);
         priorityQueue.add(source);
-        shortestPaths.get(source).add(source); // Source's path to itself is just itself
+        shortestPaths.put(source, ImmutableList.of(source)); // Source's path to itself is just itself
 
-        // Dijkstra's algorithm, re implemented to save some compute time
+        // Dijkstra's algorithm, re implemented to save some compute time as we need all the data.
         while (!priorityQueue.isEmpty()) {
             NetworkNode current = priorityQueue.poll();
 
@@ -762,14 +811,16 @@ public class Channel implements Collection<NetworkNode>{
      * collection.
      *
      * @param c collection containing elements to be removed from this collection
-     * @return {@code true} if this collection changed as a result of the
-     * call
+     * @return {@code true} if this collection changed as a result of the call
+     *
      * @throws UnsupportedOperationException if the {@code removeAll} method
      *                                       is not supported by this collection
+     *
      * @throws ClassCastException            if the types of one or more elements
      *                                       in this collection are incompatible with the specified
      *                                       collection
      *                                       ({@linkplain Collection##optional-restrictions optional})
+     *
      * @throws NullPointerException          if this collection contains one or more
      *                                       null elements and the specified collection does not support
      *                                       null elements
@@ -780,14 +831,28 @@ public class Channel implements Collection<NetworkNode>{
      */
     @Override
     public boolean removeAll(@NotNull Collection<?> c) {
+        Collection<?> requestedRemovals = new ArrayList<>(c);
+
         boolean output = false;
 
-        for(Object o : c){
-            if (!(o instanceof NetworkNode networkNode)) {
-                return false;
+        for(Object o : requestedRemovals) {
+            if (!(o instanceof NetworkNode)) {
+                String actualType =
+                        o == null ? "null" : o.getClass().getSimpleName();
+                throw new ClassCastException(
+                        "This method requires Collection 'c' contain only instances of " +
+                                NetworkNode.class.getSimpleName() + ". 'c' contained an instance of " +
+                                actualType + "."
+                );
             }
+        }
+        for(Object o : requestedRemovals){
 
-            RemoveNodeNoUpdate(networkNode);
+            // we have first validated all members of c are NetworkNodes, so we can just cast
+            NetworkNode node = (NetworkNode) o;
+            if(RemoveNodeNoUpdate(node)){
+                output = true;
+            }
         }
 
         if (output == true){
@@ -822,11 +887,16 @@ public class Channel implements Collection<NetworkNode>{
      */
     @Override
     public boolean retainAll(@NotNull Collection<?> c) {
+
+        ArrayList<NetworkNode> requestedRetains = createRequestedRetains(c);
+
+        ArrayList<NetworkNode> currentNodes = new ArrayList<>(Graph.vertexSet());
+
         boolean changed = false;
 
-        for (NetworkNode node : Graph.vertexSet()) {
+        for (NetworkNode node : currentNodes) {
 
-            if (!c.contains(node)) {
+            if (!requestedRetains.contains(node)) {
                 if(RemoveNodeNoUpdate(node)){
                     changed = true;
                 }
@@ -842,6 +912,25 @@ public class Channel implements Collection<NetworkNode>{
         return changed;
     }
 
+    private static @NotNull ArrayList<NetworkNode> createRequestedRetains(@NotNull Collection<?> c) {
+        ArrayList<NetworkNode> requestedRetains = new ArrayList<>();
+
+        for(Object o : c) {
+            if (!(o instanceof NetworkNode node)) {
+                String actualType =
+                        o == null ? "null" : o.getClass().getSimpleName();
+                ProxChatBaseMod.LOGGER.warn(
+                        "{}.retainAll is expecting Collection 'c' contain only instances of {}. 'c' contained an instance of {}. " + "The method was able to continue, but may not have removed all expected elements.",
+                        Channel.class.getSimpleName(), NetworkNode.class.getSimpleName(), actualType
+                );
+            }
+            else {
+                requestedRetains.add(node);
+            }
+        }
+        return requestedRetains;
+    }
+
     /**
      * Removes all the elements from this collection (optional operation).
      * The collection will be empty after this method returns.
@@ -852,7 +941,9 @@ public class Channel implements Collection<NetworkNode>{
     @Override
     public void clear() {
         ShortestPathRegistry.clear();
-        Graph.removeAllVertices(Graph.vertexSet());
+        NodeReceivingRegistry.clear();
+        NodeRangeRegistry.clear();
+        Graph.removeAllVertices(new ArrayList<>(Graph.vertexSet()));
     }
 
     public Identifier getID(){

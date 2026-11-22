@@ -106,4 +106,9 @@ public class ChunkReference {
     public int hashCode() {
         return globalPos.hashCode();
     }
+
+    @Override
+    public String toString(){
+        return "{ world:" + globalPos.dimension() + ", X:" + globalPos.pos().getX() + "Z:" + globalPos.pos().getZ() + " }";
+    }
 }

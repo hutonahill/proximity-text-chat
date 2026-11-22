@@ -314,4 +314,23 @@ public class ChunkReferenceSet implements Set<ChunkReference> {
     public void clear() {
         _chunks.clear();
     }
+
+    @Override
+    public String toString(){
+        StringBuilder output = new StringBuilder("{ ");
+
+        for (ChunkReference chunk : _chunks) {
+            output.append(chunk.toString()).append(", ");
+        }
+
+        if (output.length() > 2) { // if the set is empty, we will only have a 2-char string.
+            output.setLength(output.length() - 2);
+            output.append(" }");
+        }
+        else{
+            output.append("}");
+        }
+
+        return output.toString();
+    }
 }

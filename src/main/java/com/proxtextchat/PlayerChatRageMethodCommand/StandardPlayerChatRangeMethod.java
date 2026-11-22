@@ -23,15 +23,12 @@ public class StandardPlayerChatRangeMethod implements PlayerChatRangeDefinition{
         ServerWorld world = (ServerWorld) sender.getWorld();
 
         // Iterate through chunks within range of the sender
-        for (int dx = -range; dx <= range; dx++) {
-            for (int dz = -range; dz <= range; dz++) {
 
-                // Iterate through all players in the chunk
-                for (PlayerEntity player : world.getPlayers()) {
-                    if (player.squaredDistanceTo(sender) <= range * range) {
-                        playersInRange.add(player);
-                    }
-                }
+
+        // Iterate through all players in the chunk
+        for (PlayerEntity player : world.getPlayers()) {
+            if (player.squaredDistanceTo(sender) <= (range * range)) {
+                playersInRange.add(player);
             }
         }
 

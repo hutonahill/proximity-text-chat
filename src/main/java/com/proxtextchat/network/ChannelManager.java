@@ -101,19 +101,33 @@ public class ChannelManager implements Collection<Channel>{
     }
 
     /**
-     * @param node Will remove the node from the channel if it was present.
-     *             If the last node is removed from the channel, will remove the channel.
+     * Removes the specified node from its registered channel.
+     *
+     * <p>If the node is successfully removed, all message subscriptions associated
+     * with its ID are discarded. If the removal leaves the channel empty, the
+     * channel is also removed from this manager.</p>
+     *
+     * @param node the non-null network node to remove
+     * @return {@code true} if the node was registered and removed;
+     *         {@code false} if its channel was not registered or did not contain it
      */
-    public void RemoveNode(@NotNull NetworkNode node){
+    public boolean RemoveNode(@NotNull NetworkNode node){
+        boolean removed = false;
+
         if(ChannelRegistry.containsKey((node.getChannelId()))){
             Channel graph = ChannelRegistry.get(node.getChannelId());
             
-            graph.remove(node);
+            removed = graph.remove(node);
 
-            if (graph.isEmpty()){
-                ChannelRegistry.remove(node.getChannelId());
+            if(removed){
+                NodeMessageEvent.remove(node.getID());
+                if (graph.isEmpty()){
+                    ChannelRegistry.remove(node.getChannelId());
+                }
             }
         }
+
+        return removed;
     }
 
 
@@ -408,7 +422,7 @@ public class ChannelManager implements Collection<Channel>{
      * the source/destination node is not found in the channel.
      */
     public boolean directMessage(@NotNull NetworkNode source, @NotNull NetworkNode destination, @NotNull Message message) throws ChannelMismatch {
-        if (source.getChannelId() != destination.getChannelId()){
+        if (!source.getChannelId().equals(destination.getChannelId())){
             throw new ChannelMismatch("Nodes must have the same channel to send messages between them.");
         }
 
@@ -418,11 +432,12 @@ public class ChannelManager implements Collection<Channel>{
 
         Channel graph = ChannelRegistry.get(source.getChannelId());
 
-        if (graph.contains(source)){
+        if (!graph.contains(source)){
             throw new IllegalArgumentException("source node not found.");
         }
+        else
 
-        if (graph.contains(destination)){
+        if (!graph.contains(destination)){
             throw new IllegalArgumentException("destination node not found.");
         }
 
@@ -458,7 +473,7 @@ public class ChannelManager implements Collection<Channel>{
 
         Channel graph = ChannelRegistry.get(source.getChannelId());
 
-        if (graph.contains(source)){
+        if (!graph.contains(source)){
             throw new IllegalArgumentException("source node not found.");
         }
 
@@ -491,7 +506,7 @@ public class ChannelManager implements Collection<Channel>{
 
         Channel graph = ChannelRegistry.get(source.getChannelId());
 
-        if (graph.contains(source)){
+        if (!graph.contains(source)){
             throw new IllegalArgumentException("source node not found.");
         }
 
@@ -523,12 +538,8 @@ public class ChannelManager implements Collection<Channel>{
             World world = player.getWorld();
             if (world != null && player.getServer() != null) {
 
-                // Get the player's current chunk coordinates
-                int chunkX = player.getBlockPos().getX();
-                int chunkZ = player.getBlockPos().getZ();
-
                 // Retrieve the chunk from the world
-                ChunkReference playerChunk = new ChunkReference(world.getChunk(chunkX, chunkZ));
+                ChunkReference playerChunk = new ChunkReference(world.getRegistryKey(), player.getChunkPos());
 
                 if(node.getRangeChunks().contains(playerChunk)){
                     player.sendMessage(message.getMessage());
@@ -893,5 +904,6 @@ public class ChannelManager implements Collection<Channel>{
     @Override
     public void clear() {
         ChannelRegistry.clear();
+        NodeMessageEvent.clear();
     }
 }

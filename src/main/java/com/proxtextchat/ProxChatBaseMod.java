@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static net.minecraft.server.command.CommandManager.argument;
@@ -182,24 +183,11 @@ public class ProxChatBaseMod implements ModInitializer {
             dispatcher.getRoot().addChild(PlayerChatRangeMethodNode);
         });
 
-        /*ServerLifecycleEvents.SERVER_STARTED.register(ProxChatBaseMod::LoadChannelData);
-        ServerLifecycleEvents.BEFORE_SAVE.register(ProxChatBaseMod::SaveChannelData);*/
+        ServerLifecycleEvents.SERVER_STARTED.register(ProxChatBaseMod::LoadChannelData);
+        ServerLifecycleEvents.BEFORE_SAVE.register(ProxChatBaseMod::SaveChannelData);
 
         // triggered every time a player sends a message. If the method returns false server will not deliver message.
         ServerMessageEvents.ALLOW_CHAT_MESSAGE.register(ProxChatBaseMod::AllowChatMessageRule);
-
-
-        // TESTING IO:
-
-        try {
-            ChannelManager.Instance.add(new Channel(new HashSet<>()));
-        } catch (ChannelMismatch e) {
-            throw new RuntimeException(e);
-        }
-
-        SaveChannelData();
-
-        //throw new RuntimeException("CrashPlz");
 
     }
 
@@ -254,15 +242,14 @@ public class ProxChatBaseMod implements ModInitializer {
 
             // Move the original file to the corrupted filename
             Files.move(current, uniqueTaggedPath);
-
-            // Create an empty file at the original path
-            Files.createFile(current);
         } catch (IOException e) {
             LOGGER.error("Failed to copy corrupted file", e);
         }
     }
 
     private static void LoadChannelData(MinecraftServer server){
+        ChannelManager.Instance.clear();
+
         // define where we save data.
         Path savePath = server.getSavePath(WorldSavePath.ROOT)
                 .resolve(ModFolder)
@@ -276,67 +263,94 @@ public class ProxChatBaseMod implements ModInitializer {
         }
         catch (IOException e){
 
-            LOGGER.error("Failed to generate Channel Data filepath." +
+            LOGGER.error("Failed to generate Channel Data filepath. " +
                     "Saving a copy of the corrupted file ", e);
         }
 
 
-        List<Channel> channelList = new ArrayList<>();
+        List<Channel> channelList;
 
-        if (!Files.exists(savePath)) {
-            try{
-                Files.createFile(savePath);
-            }
-            catch (IOException e){
-                LOGGER.error("Failed to create Channel Data file", e);
-            }
-        }
-        else{
+        if (Files.exists(savePath)) {
 
             NbtCompound loadedData = new NbtCompound();
             try{
                 loadedData = NbtIo.readCompressed(savePath, NbtSizeTracker.ofUnlimitedBytes());
 
             } catch (IOException eOne) {
-                LOGGER.warn("Failed to read compressed channel data file at `"+savePath+"`. " +
-                        "Attempting to recover by reading uncompressed...", eOne);
+                LOGGER.warn(
+                        "Failed to read compressed channel data file at `{}`. Attempting to recover by reading uncompressed...",
+                        savePath, eOne
+                );
 
                 try {
-                    loadedData = NbtIo.read(savePath);
+                    NbtCompound recoveredData = NbtIo.read(savePath);
 
-                    LOGGER.warn("Successfully recovered by reading channel data .");
+                    if (recoveredData == null) {
+                        throw new IOException(
+                                "Uncompressed channel data at " + savePath + " was empty."
+                        );
+                    }
+
+                    loadedData = recoveredData;
+                    LOGGER.warn("Successfully recovered channel data by reading it uncompressed channel data.");
                 }
                 catch (IOException eTwo){
                     saveCorruptedFileCopy(savePath);
 
                     LOGGER.error("Failed to recover by reading uncompressed. " +
                             "Saved a copy of the corrupted file in the same directory and reset out the original corrupted file. " +
-                            "All channel has been lost.", eTwo);
+                            "All channels gave been lost.", eTwo);
+                    for (Consumer<ChannelDataLossContext> handler : recoveryHandlers){
+                        handler.accept(new ChannelDataLossContext(server, savePath, eTwo));
+                    }
+                    return;
                 }
             }
 
+
             NbtElement loadedElement = new NbtCompound();
-            if (loadedData.contains("data")){
-                loadedElement = loadedData.get("data");
+            if(loadedData != null){
+                if (loadedData.contains("data")){
+                    loadedElement = loadedData.get("data");
+                }
             }
+
+
 
             DataResult<List<Channel>> dataResult = Channel.CODEC.listOf().parse(NbtOps.INSTANCE, loadedElement);
             channelList = dataResult.resultOrPartial(LOGGER::error).orElseThrow();
 
+        } else {
+            return;
         }
         ChannelManager.Instance.addAll(channelList);
     }
 
+    public record ChannelDataLossContext(
+            MinecraftServer server,
+            Path dataPath,
+            IOException cause
+    ) {}
+
+    private static final HashSet<Consumer<ChannelDataLossContext>> recoveryHandlers = new HashSet<>();
+
+    public static boolean RegisterChannelDataLossRecoveryHandler(Consumer<ChannelDataLossContext> handler){
+        return recoveryHandlers.add(handler);
+    }
+
+    public static boolean UnRegisterChannelDataLossRecoveryHandler(Consumer<ChannelDataLossContext> handler){
+        return recoveryHandlers.remove(handler);
+    }
 
 
-    private static void SaveChannelData(/*MinecraftServer server, boolean flush, boolean force*/){
+
+    private static void SaveChannelData(MinecraftServer server, boolean flush, boolean force){
         // Encode data to NbtElement
         DataResult<NbtElement> saveDataResult = Channel.CODEC.listOf().encodeStart(NbtOps.INSTANCE,
                 new ArrayList<>(ChannelManager.Instance.getChannelSet()));
 
         NbtElement saveDataElement = saveDataResult.resultOrPartial(LOGGER::error).orElseThrow();
 
-        LOGGER.warn("SAVE DATA ELEMENT: "+saveDataElement);
         NbtCompound nbt;
         if (saveDataElement instanceof NbtCompound compound) {
             nbt = compound;
@@ -345,23 +359,14 @@ public class ProxChatBaseMod implements ModInitializer {
             nbt.put("data",saveDataElement);
         }
 
-
-        // Create the path where data will be saved
-        String userHome = System.getProperty("user.home");
-        Path savePath = Paths.get(userHome, "Desktop")
-                .resolve(ModFolder+"2")
+        Path savePath = server.getSavePath(WorldSavePath.ROOT)
+                .resolve(ModFolder)
                 .resolve(ChannelManager.ChannelManagerFolder)
                 .resolve(ChannelManager.ChannelFile);
 
-        LOGGER.warn(savePath.toString());
-        /*Path savePath = server.getSavePath(WorldSavePath.ROOT)
-                .resolve(ModFolder)
-                .resolve(ChannelManager.ChannelManagerFolder)
-                .resolve(ChannelManager.ChannelFile);*/
-
 
         try {
-            Files.createFile(savePath);
+            Files.createDirectories(savePath.getParent());
             NbtIo.writeCompressed(nbt, savePath);  // Writing the NbtCompound to the file
         } catch (IOException e) {
             LOGGER.error("Failed to save channel data", e);

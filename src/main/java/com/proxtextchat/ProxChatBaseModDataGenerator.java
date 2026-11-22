@@ -1,5 +1,6 @@
 package com.proxtextchat;
 
+import com.proxtextchat.LangProviders.ProxChatBaseModEnglishLangProvider;
 import net.fabricmc.fabric.api.datagen.v1.DataGeneratorEntrypoint;
 import net.fabricmc.fabric.api.datagen.v1.FabricDataGenerator;
 import net.fabricmc.fabric.api.datagen.v1.FabricDataOutput;
@@ -13,6 +14,7 @@ public class ProxChatBaseModDataGenerator implements DataGeneratorEntrypoint {
 	public void onInitializeDataGenerator(FabricDataGenerator fabricDataGenerator) {
 		var pack = fabricDataGenerator.createPack();
 		pack.addProvider(ItemTagGenerator::new);
+		pack.addProvider(ProxChatBaseModEnglishLangProvider::new);
 	}
 	private static class ItemTagGenerator extends FabricTagProvider.ItemTagProvider
 	{

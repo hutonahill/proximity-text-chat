@@ -111,8 +111,7 @@ public class DisableComCommands {
         else{
 
             // TODO: we need to implement the standard command here.
+            return Command.SINGLE_SUCCESS;
         }
     }
-
-
 }

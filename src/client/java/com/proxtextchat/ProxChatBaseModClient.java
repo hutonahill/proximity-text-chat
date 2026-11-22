@@ -37,6 +37,10 @@ public class ProxChatBaseModClient implements ClientModInitializer {
 
 	public static Screen getConfigScreen(Screen parent) {
 		ServiceLoader<ClothConfigCompatBase> loader = ServiceLoader.load(ClothConfigCompatBase.class);
+		if(loader.findFirst().isPresent()){
+
+		}
+
 		return loader.findFirst().get().getConfigScreen(parent);
 		/*if (isModLoaded("cloth_config") || isModLoaded("cloth-config") || isModLoaded("cloth-config")) {
 			ServiceLoader<ClothConfigCompatBase> loader = ServiceLoader.load(ClothConfigCompatBase.class);

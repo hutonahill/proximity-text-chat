@@ -1,4 +1,5 @@
 {
-	"proxchatbasemod.player_chat_distance" : "Player Chat Distance",
-	"proxchatbasemod.player_chat_range_definition" : "Player Chat Range Definition"
+  "proxchatbasemod.player_chat_distance": "Player Chat Distance",
+  "proxchatbasemod.player_chat_range_definition": "Player Chat Range Definition",
+  "proxchatbasemod.mod_name": "Proximity Text Chat"
 }
