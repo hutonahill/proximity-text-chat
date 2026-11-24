@@ -11,6 +11,8 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
+import java.util.Optional;
+
 public class ClothConfigCompat implements ClothConfigCompatBase {
     @Override
     public Screen getConfigScreen(Screen parent) {
@@ -24,23 +26,34 @@ public class ClothConfigCompat implements ClothConfigCompatBase {
 
         AbstractConfigListEntry<Integer> entry1 = entryBuilder.startIntSlider(
                 ProxChatBaseModClient.translatable("config.player_chat_distance"),
-                0,
                 ProxChatBaseModClient.config.getPlayerChatRange(),
-                256
+                Config.MIN_PLAYER_CHAT_RANGE,
+                Config.MAX_PLAYER_CHAT_RANGE
             ).setDefaultValue(Config.DEFAULT_PLAYER_TO_PLAYER_CHAT_RANGE)
-            .setTooltip(ProxChatBaseModClient.translatable("config.chatRangeDefinition.ttp"))
+            .setTooltip(ProxChatBaseModClient.translatable("config.player_chat_distance.tooltip"))
             .setSaveConsumer((chatRange) -> ProxChatBaseModClient.config.setPlayerChatRange(chatRange))
             .build();
         general.addEntry(entry1);
 
-        SelectionListEntry<Comparable<? extends Comparable<?>>> entry2 = entryBuilder.startSelector(
-                ProxChatBaseModClient.translatable("config.chatRangeDefinition"),
+        SelectionListEntry<Identifier> entry2 = entryBuilder.startSelector(
+                ProxChatBaseModClient.translatable("config.player_chat_range_definition"),
                 ChatRangeRegistry.getKeys().toArray(new Identifier[0]),
                 ProxChatBaseModClient.config.getChatRangeDefinition()
-            ).setDefaultValue(Config.DEFAULT_CHAT_METHOD.getID().toString())
-            .setTooltip(ProxChatBaseModClient.translatable("config.chatRangeDefinition_tooltip"))
-            .setSaveConsumer((chatRangeDefinition) -> ProxChatBaseModClient.config.setChatRangeDefinition(ChatRangeRegistry.registry.get(chatRangeDefinition)))
-            .build();
+            ).setDefaultValue(Config.DEFAULT_CHAT_METHOD.getID())
+            .setTooltipSupplier(
+                identifier -> Optional.of(
+                    new Text[] {
+                        ProxChatBaseModClient.translatable(
+                            "config.player_chat_range_definition.tooltip"
+                        ),
+                        Text.literal(identifier.toString())
+                    }
+                )
+            ).setSaveConsumer(
+                (chatRangeDefinition) -> ProxChatBaseModClient.config
+                    .setChatRangeDefinition(ChatRangeRegistry.registry.get(chatRangeDefinition))
+            ).build();
+
         general.addEntry(entry2);
 
         return builder.build();
