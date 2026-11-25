@@ -21,10 +21,25 @@ import java.nio.file.Files;
 import java.util.Optional;
 
 
+/**
+ * The definition for this mods configuration file.
+ */
 public class Config{
+    /**
+     * The default player chat range.
+     */
     public static final Integer DEFAULT_PLAYER_TO_PLAYER_CHAT_RANGE = 64;
+    /**
+     * The default chat range method
+     */
     public static final PlayerChatRangeDefinition DEFAULT_CHAT_METHOD = StandardPlayerChatRangeMethod.getInstance();
+    /**
+     * The minimum player chat range.
+     */
     public static final int MIN_PLAYER_CHAT_RANGE = 0;
+    /**
+     * the maximum player chat range.
+     */
     public static final int MAX_PLAYER_CHAT_RANGE = 512;
 
     static {
@@ -55,6 +70,9 @@ public class Config{
     private Integer playerChatRange;
     private PlayerChatRangeDefinition chatRangeDefinition;
 
+    /**
+     * Used to convert between game memory and long term storage.
+     */
     public static final Codec<Config> CODEC = RecordCodecBuilder.create((instance) ->
             instance.group(
                     Codec.intRange(MIN_PLAYER_CHAT_RANGE,MAX_PLAYER_CHAT_RANGE).optionalFieldOf("player_chat_range", DEFAULT_PLAYER_TO_PLAYER_CHAT_RANGE)
@@ -64,7 +82,13 @@ public class Config{
 
             ).apply(instance, Config::new));
 
+    /**
+     * S constructor for {@link Config}.
+     * @param playerChatRange The range at which a player can send messages to other players when proximity text chat is enabled.
+     * @param chatRangeDefinitionId The identifier for the chat range finding method.
+     */
     public Config(Integer playerChatRange, Identifier chatRangeDefinitionId) {
+        // TODO: Validate these inputs.
         this.playerChatRange = playerChatRange;
         PlayerChatRangeDefinition definition =
             ChatRangeRegistry.registry.get(chatRangeDefinitionId);
@@ -81,6 +105,9 @@ public class Config{
         }
     }
 
+    /**
+     * The constructor for {@link Config}.
+     */
     public Config() {
         this.playerChatRange = DEFAULT_PLAYER_TO_PLAYER_CHAT_RANGE;
         this.chatRangeDefinition = DEFAULT_CHAT_METHOD;
@@ -101,6 +128,9 @@ public class Config{
         this.chatRangeDefinition = chatRangeDefinition;
     }
 
+    /**
+     * @param location Saves the config file to a location.
+     */
     public void save(File location) {
         DataResult<JsonElement> result = CODEC.encodeStart(JsonOps.INSTANCE, this);
         if (result.error().isPresent() || result.isError() || result.result().isEmpty()) {
@@ -119,6 +149,11 @@ public class Config{
         }
     }
 
+
+    /**
+     * @param location The location of the config file.
+     * @return the Config or a default config and any errors.
+     */
     public static LoadResult load(File location){
         // there is no config, we need to create a new default config and save it.
         if (!location.exists()) {
@@ -135,15 +170,14 @@ public class Config{
             if (resultCodec.error().isPresent()) {
                 String error = resultCodec.error().get().message();
 
-                ProxChatBaseModClient.logger.error(
-                    "Invalid config file '{}': {}",
-                    location.getAbsolutePath(),
-                    error
-                );
+                String message = ("Invalid config file '%s'. Using default configuration. \nDetails: %s")
+                    .formatted(location.getAbsolutePath(), error);
+
+                ProxChatBaseModClient.logger.error(message);
 
                 return new LoadResult(
                     new Config(),
-                    Optional.of(error)
+                    Optional.of(message)
                 );
             }
 
@@ -153,7 +187,7 @@ public class Config{
             else{
                 String message = (
                     "The config decoder returned neither a configuration nor an error "
-                        + "while loading '%s'. This is likely not an issue with this mod. Using default configuration."
+                        + "while loading '%s'. Using default configuration."
                 ).formatted(location.getAbsolutePath());
 
                 ProxChatBaseModClient.logger.error(message);
@@ -165,22 +199,20 @@ public class Config{
             }
         }   catch (IOException exception){
             String message = ("Could not read config file '%s'. "
-                + "Using default configuration. ")
-                .formatted(location.getAbsolutePath());
+                + "Using default configuration. \nDetails: %s")
+                .formatted(location.getAbsolutePath(), exception.getMessage());
 
             ProxChatBaseModClient.logger.error(message, exception);
 
             return new LoadResult(
                 new Config(),
-                Optional.of(
-                    message + exception.getMessage()
-                )
+                Optional.of(message)
             );
         }
         catch (JsonParseException exception) {
             String message = ("Config file '%s' contains invalid JSON. " +
                 "Check its commas, quotes, and braces. " +
-                "Using default configuration. Details: %s")
+                "Using default configuration. \n \nDetails: %s")
                 .formatted(
                     location.getAbsolutePath(),
                     exception.getMessage()
@@ -188,10 +220,14 @@ public class Config{
 
             ProxChatBaseModClient.logger.error(message);
 
-            return new LoadResult(new Config(), Optional.of(message)); // ERROR for here
+            return new LoadResult(new Config(), Optional.of(message));
         }
     }
 
+    /**
+     * @param config the config. if there was an error this is the default config.
+     * @param error an error message if an error occurred.
+     */
     public record LoadResult(
         Config config,
         Optional<String> error

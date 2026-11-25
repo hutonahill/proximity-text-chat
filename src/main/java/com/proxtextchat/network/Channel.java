@@ -434,6 +434,7 @@ public class Channel implements Collection<NetworkNode>{
     private void PopulateShortestPathRegistry(){
         if (ShortestPathRegistry.isEmpty()){
 
+            // TODO: find out why this is bad.
             ExecutorService executor = Executors.newFixedThreadPool(Math.max(1, coreCount - 1));
             try{
                 List<Future<Pair<NetworkNode, ImmutableMap<NetworkNode, ImmutableList<NetworkNode>>>>> futures = new ArrayList<>();
@@ -783,6 +784,7 @@ public class Channel implements Collection<NetworkNode>{
      *                                       this time due to insertion restrictions
      * @see #add(NetworkNode)
      */
+    @SuppressWarnings("GrazieStyle")
     @Override
     public boolean addAll(@NotNull Collection<? extends NetworkNode> c) {
         boolean output = false;

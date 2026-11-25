@@ -7,6 +7,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
 
+// TODO: Hmmm. i may be doing translations wrong.
 public class ProxChatBaseModEnglishLangProvider extends FabricLanguageProvider {
     public ProxChatBaseModEnglishLangProvider(FabricDataOutput dataOutput, CompletableFuture<RegistryWrapper.WrapperLookup> registryLookup) {
         // Specifying en_us is optional, as it's the default language code

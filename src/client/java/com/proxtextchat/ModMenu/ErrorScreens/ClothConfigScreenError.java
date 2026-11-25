@@ -5,10 +5,17 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 
+/**
+ * A screen for informing the user that ClothConfig is not installed.
+ */
 public class ClothConfigScreenError extends Screen {
 
     private final Screen parent;
 
+    /**
+     * Constructor for {@link ClothConfigScreenError}
+     * @param parent The screen the that this screen should return to.
+     */
     public ClothConfigScreenError(Screen parent){
         super(Text.literal("Cloth Config Screen Not Found"));
 
@@ -38,8 +45,6 @@ public class ClothConfigScreenError extends Screen {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta){
-
-        renderBackground(context, mouseX, mouseY, delta);
 
         super.render(context, mouseX, mouseY, delta);
 

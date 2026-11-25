@@ -7,11 +7,11 @@ However, there are others.
 ### [NetworkNode](src%2Fmain%2Fjava%2Fcom%2Fproxtextchat%2Fnetwork%2FNetworkNode.java)
 This is the most fundamental piece of the network. It is composed of three parts:
  - A set of chunks where the node can receive messages
- - A set of chunks to which the node can receive messages.
+ - A set of chunks to which the node can send messages.
  - A channel Identifier.
 
 And that's pretty much of it. Network Node doesn't do any computation,
-its just a place to store data and a vague location. 
+it's just a place to store data and a vague location. 
 
 ### [Channel](src%2Fmain%2Fjava%2Fcom%2Fproxtextchat%2Fnetwork%2FChannel.java)
 A channel is a collection of NetworkNode's. Its network. It's composed of 
@@ -41,7 +41,7 @@ messages from it and sending messages as it.
 
 The goal of this class is that it should be able to do anything you want to do with the collection
 of networks. add nodes, it automatically adds a channels, it removes unused channels, it allows for 
-players to subscribe to channels and it allows systems to subscribe to channels. It also has methods 
+players to subscribe to channels, and it allows systems to subscribe to channels. It also has methods 
 facilitate sending messages.
 
 ### [ChannelMismatch](src%2Fmain%2Fjava%2Fcom%2Fproxtextchat%2Fnetwork%2FChannelMismatch.java)

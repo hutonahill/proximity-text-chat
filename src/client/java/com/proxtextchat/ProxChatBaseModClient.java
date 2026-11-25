@@ -44,6 +44,9 @@ public class ProxChatBaseModClient implements ClientModInitializer {
 	 */
 	public static File configFile;
 
+    /**
+     * stores any pending config errors while the game loads.
+     */
 	public static @Nullable String pendingConfigErrorMessage;
 
 	/**
@@ -79,10 +82,18 @@ public class ProxChatBaseModClient implements ClientModInitializer {
 	}
 
 
+    /**
+     * @param path the path for this translatable text.
+     * @return the text found at the translation path.
+     */
 	public static MutableText translatable(String path) {
 		return Text.translatable(MOD_ID + "." + path);
 	}
 
+    /**
+     * @param parent Returns the config screen. Uses Cloth Config if that mod is present.
+     * @return The relevant config screen.
+     */
 	public static @Nullable Screen getConfigScreen(Screen parent) {
 
 		// if cloth is not included, we need to make sure we don't load anything form it.

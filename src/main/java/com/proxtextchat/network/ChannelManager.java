@@ -456,7 +456,7 @@ public class ChannelManager implements Collection<Channel>{
     }
 
     /**
-     * Sends a direct message from a source node to a target player, provided the target is in the range of the chanel.
+     * Sends a direct message from a source node to a target player, provided the target is in the range of the channel.
      *
      * @param source the source node from which the message is sent.
      * @param target the player you are sending the message to.
@@ -816,6 +816,7 @@ public class ChannelManager implements Collection<Channel>{
      *                                       this time due to insertion restrictions
      * @see #add(Channel)
      */
+    @SuppressWarnings("GrazieStyle")
     @Override
     public boolean addAll(@NotNull Collection<? extends Channel> c) {
         for(Channel channel : c){

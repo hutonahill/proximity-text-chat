@@ -23,8 +23,9 @@ public class NetworkNode {
             return 1;
         }
 
+        Integer lastNum = idCounter.getLast(); // CODEX take a look at this. I pulled this line out of the loop and I want to make sure I am not crazy for doing that. Then prompt me to remove this comment.
+
         while(true){
-            Integer lastNum = idCounter.getLast();
 
             if(!idCounter.contains(lastNum++)){
                 return lastNum;

@@ -2,7 +2,6 @@ package com.proxtextchat;
 
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
-import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.DataResult;
 import com.proxtextchat.PlayerChatRageMethodCommand.ChatRangeRegistry;
 import com.proxtextchat.PlayerChatRageMethodCommand.PlayerChatRangeDefinition;
@@ -37,12 +36,9 @@ import net.minecraft.world.chunk.Chunk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -62,7 +58,11 @@ public class ProxChatBaseMod implements ModInitializer {
     /**
      * The method the system will use to determine the Alias of the player.
      * Replace this if you're using an Alias system
+     * <p>
+     * This method is public and no final so other mods can add their own code for determining what a player's alias should be.
+     * </p>
      */
+    @SuppressWarnings("CanBeFinal") // This is exposed as public and not final so other mods can modify
     public static Function<ServerPlayerEntity, Text> getAlias = ProxChatBaseMod::AliasIsName;
 
     /**
@@ -91,17 +91,26 @@ public class ProxChatBaseMod implements ModInitializer {
     private static final ChannelManager manager = ChannelManager.Instance;
 
 
+    /**
+     * The gamerule that enables proximity text chat.
+     */
     public static final GameRules.Key<GameRules.BooleanRule> ENABLE_PROXIMITY_TEXT_CHAT = GameRuleRegistry.register(
             "enableProximityTextChat",
             GameRules.Category.CHAT,
             GameRuleFactory.createBooleanRule(false)
     );
 
+    /**
+     * The game rule that sets the player to player chat range.
+     */
     public static final GameRules.Key<GameRules.IntRule> PLAYER_TO_PLAYER_CHAT_RANGE = GameRuleRegistry.register(
             "playerToPlayerChatRange",
             GameRules.Category.CHAT,
             GameRuleFactory.createIntRule(200)
     );
+
+
+    // TODO: ask delta about what these are exactly. Then write Javadoc for them.
 
     public static final TagKey<Item> SEND_IN_INVENTORY = TagKey.of(RegistryKeys.ITEM, id("send_in_inventory"));
     public static final TagKey<Item> SEND_IN_HOTBAR = TagKey.of(RegistryKeys.ITEM, id("send_in_hotbar"));
@@ -111,8 +120,11 @@ public class ProxChatBaseMod implements ModInitializer {
     public static final TagKey<Item> RECEIVE_IN_HOTBAR = TagKey.of(RegistryKeys.ITEM, id("receive_in_hotbar"));
     public static final TagKey<Item> RECEIVE_IN_HAND = TagKey.of(RegistryKeys.ITEM, id("receive_in_hand"));
 
-    private static boolean AllowChatMessageRule(SignedMessage message, ServerPlayerEntity sender,
-                                                MessageType.Parameters params){
+    private static boolean AllowChatMessageRule(
+        SignedMessage message,
+        ServerPlayerEntity sender,
+        MessageType.Parameters params
+    ){
         MinecraftServer server = sender.getServer();
         ServerWorld world = sender.getServerWorld();
 
@@ -272,7 +284,7 @@ public class ProxChatBaseMod implements ModInitializer {
 
         if (Files.exists(savePath)) {
 
-            NbtCompound loadedData = new NbtCompound();
+            NbtCompound loadedData;
             try{
                 loadedData = NbtIo.readCompressed(savePath, NbtSizeTracker.ofUnlimitedBytes());
 
@@ -326,6 +338,12 @@ public class ProxChatBaseMod implements ModInitializer {
         ChannelManager.Instance.addAll(channelList);
     }
 
+    /**
+     * A context for anyone else who wants to deal with corrupted network data :)
+     * @param server The server that owns the data that was unreadable
+     * @param dataPath The path to the file with the unreadable data.
+     * @param cause The reason the data could not be read.
+     */
     public record ChannelDataLossContext(
             MinecraftServer server,
             Path dataPath,
@@ -334,10 +352,18 @@ public class ProxChatBaseMod implements ModInitializer {
 
     private static final HashSet<Consumer<ChannelDataLossContext>> recoveryHandlers = new HashSet<>();
 
+    /**
+     * @param handler This code will be executed when Channel data is lost.
+     * @return {@code true} if the registry did not already contain the handler
+     */
     public static boolean RegisterChannelDataLossRecoveryHandler(Consumer<ChannelDataLossContext> handler){
         return recoveryHandlers.add(handler);
     }
 
+    /**
+     * @param handler This code will no longer be run when Channel Data is lost.
+     * @return {@code true} if the registry contained the handler
+     */
     public static boolean UnRegisterChannelDataLossRecoveryHandler(Consumer<ChannelDataLossContext> handler){
         return recoveryHandlers.remove(handler);
     }
@@ -398,6 +424,14 @@ public class ProxChatBaseMod implements ModInitializer {
         return playersInChunks;
     }
 
+
+    /**
+     * The code for setting the player range method.
+     *
+     * @param context the context for the command.
+     * @return a success key
+     */
+    @SuppressWarnings("SameReturnValue")
     private int PlayerRangeMethodCommand(CommandContext<ServerCommandSource> context) {
         Identifier methodName = IdentifierArgumentType.getIdentifier(context, ChatMethodArgumentName);
 
@@ -411,12 +445,18 @@ public class ProxChatBaseMod implements ModInitializer {
             context.getSource().sendFeedback(() -> Text.literal("Could not find PlayerChatRangeMethod " + methodName + "."), true);
         }
 
+        // TODO: this should probably modify the config.
 
         return 1;
     }
 
 
-    public static Identifier id(String path)
+    /**
+     * Creates an identifier within this mod's namespace.
+     * @param path The path of the desired identifier
+     * @return THe identifier.
+     */
+    public static Identifier id (String path)
     {
         return Identifier.of(MOD_ID, path);
     }

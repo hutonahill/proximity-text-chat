@@ -13,6 +13,9 @@ import net.minecraft.util.Identifier;
 
 import java.util.Optional;
 
+/**
+ * Bridges the config system and the Cloth Config system.
+ */
 public class ClothConfigCompat implements ClothConfigCompatBase {
     @Override
     public Screen getConfigScreen(Screen parent) {

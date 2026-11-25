@@ -11,7 +11,6 @@ import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
@@ -50,7 +49,7 @@ public class ChunkSetManager {
 
     // 1: /createChunkSet <identifier>
     //    adds an identifier key to registry
-    private static int CreateSetHandler(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+    private static int CreateSetHandler(CommandContext<ServerCommandSource> context){
         // Get an identifier out of the command context.
         Identifier identifier = context.getArgument(IDENTIFIER_NAME, Identifier.class);
 
@@ -143,7 +142,7 @@ public class ChunkSetManager {
 
     // 6: /readChunkSet <setIdentifier>
     //    displays a chunk set.
-    private static int ReadChunkSetHandler(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+    private static int ReadChunkSetHandler(CommandContext<ServerCommandSource> context){
         Identifier identifier = context.getArgument(IDENTIFIER_NAME, Identifier.class);
 
         if(!_registry.containsKey(identifier)){

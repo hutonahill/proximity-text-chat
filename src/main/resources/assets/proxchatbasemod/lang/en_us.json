@@ -1,12 +1,16 @@
 {
+  "proxchatbasemod.mod_name": "Proximity Text Chat",
+
   "proxchatbasemod.config.player_chat_distance": "Player Chat Distance",
   "proxchatbasemod.config.player_chat_range_definition": "Player Chat Range Definition",
   "proxchatbasemod.config.player_chat_distance.tooltip": "The maximum distance at which players can hear each other.",
   "proxchatbasemod.config.player_chat_range_definition.tooltip": "The method used to determine whether players are in chat range.",
-  "proxchatbasemod.config.load_error.invalid_json": "The configuration file for %s contains invalid JSON. The default configuration was loaded instead.",
-  "proxchatbasemod.mod_name": "Proximity Text Chat",
-  "proxchatbasemod.proximity_text_chat": "Proximity Text Chat",
+  "proxchatbasemod.config.load_error.invalid_json": "The configuration file for %s failed to load properly.",
+  "proxchatbasemod.config.open_folder": "Open Config Folder",
+
+
   "proxchatbasemod.cant_parse_world_key": "Unable to parse world from world key %s.",
   "proxchatbasemod.chunk_already_exists": "A chunk set with identifier %s already exists.",
-  "proxchatbasemod.chunk_set_not_found": "No chunk set found for identifier %s."
+  "proxchatbasemod.chunk_set_not_found": "No chunk set found for identifier %s.",
+  "proxchatbasemod.no_meaningful_pos_error": "This command source has no meaningful position. Use 'execute at' or '/blast'."
 }

@@ -8,6 +8,9 @@ import net.minecraft.text.Text;
 
 import java.nio.file.Path;
 
+/**
+ * A screen that warns the user they don't have ClothConfig installed.
+ */
 public class MissingClothConfigScreen extends Screen {
 
     private static final String CLOTH_CONFIG_GIT_HUB_URL =
@@ -16,6 +19,11 @@ public class MissingClothConfigScreen extends Screen {
     private final Screen parent;
     private final Path configPath;
 
+    /**
+     * The constructor for {@link MissingClothConfigScreen}.
+     * @param parent the screen this screen should return to when the user is done.
+     * @param configPath The path to the config file.
+     */
     public MissingClothConfigScreen(Screen parent, Path configPath) {
         super(Text.literal("Cloth Config is not installed"));
 
@@ -66,15 +74,7 @@ public class MissingClothConfigScreen extends Screen {
     }
 
     @Override
-    public void render(
-        DrawContext context,
-        int mouseX,
-        int mouseY,
-        float delta
-    ) {
-
-
-        renderBackground(context, mouseX, mouseY, delta);
+    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
 
         super.render(context, mouseX, mouseY, delta);
 

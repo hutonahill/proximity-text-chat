@@ -5,6 +5,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.proxtextchat.mixin.ServerCommandSouce.ServerCommandSourceInspection;
 import com.proxtextchat.network.ChannelManager;
 import com.proxtextchat.network.ChannelMismatch;
 import com.proxtextchat.network.ChunkReference;
@@ -14,9 +15,10 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -24,8 +26,17 @@ import java.util.HashSet;
 import static com.proxtextchat.ProxChatBaseMod.ENABLE_PROXIMITY_TEXT_CHAT;
 import static com.proxtextchat.ProxChatBaseMod.getAlias;
 
+
+/**
+ * Overwrites the vanilla chat commands so we can implement proximity chat.
+ */
 public class DisableComCommands {
 
+
+    /**
+     * Actually overwrites Minecraft's chat commands.
+     * @param dispatcher
+     */
     public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
         dispatcher.register(CommandManager.literal("msg")
                 .then(CommandManager.argument("targets", EntityArgumentType.players())
@@ -53,7 +64,7 @@ public class DisableComCommands {
 
         // TODO: need to handle other commands.
 
-        // /say, /me, /say, /teammsg, /tellraw, /tm
+        // /say, /me, /teammsg, /tellraw, /tm
     }
 
     private static final ChannelManager manager = ChannelManager.Instance;
@@ -62,11 +73,9 @@ public class DisableComCommands {
 
         Collection<ServerPlayerEntity> targets = EntityArgumentType.getPlayers(context, "targets");
         String message = StringArgumentType.getString(context, "message");
-        ServerPlayerEntity sender = context.getSource().getPlayer();
+        ServerCommandSource sender = context.getSource();
         if (sender == null) {
-            context.getSource().sendFeedback(
-                    () -> Text.literal("You must be a player to use this command.").formatted(Formatting.RED),
-                    false);
+
             return 0;
         }
 
@@ -80,11 +89,30 @@ public class DisableComCommands {
         }
 
         if(server.getGameRules().get(ENABLE_PROXIMITY_TEXT_CHAT).get()){
-            ServerWorld world = sender.getServerWorld();
 
-            int chunkX = sender.getChunkPos().x;
-            int chunkY = sender.getChunkPos().z;
-            ChunkReference playerChunk = new ChunkReference(world.getChunk(chunkX, chunkY));
+
+            ServerCommandSourceInspection inspection =
+                (ServerCommandSourceInspection) sender;
+
+            if (!inspection.hasMeaningfulPosition()) {
+                sender.sendError(
+                    Text.empty()
+                        .append(Text.literal("["))
+                        .append(Text.translatable("proxchatbasemod.mod_name"))
+                        .append(Text.literal("] "))
+                        .append(Text.translatable(    "proxchatbasemod.no_meaningful_pos_error"
+                        ))
+                );
+
+                return 0;
+            }
+
+            ChunkReference SourceChunk = new ChunkReference(
+                sender.getWorld().getRegistryKey(),
+                new ChunkPos(BlockPos.ofFloored(sender.getPosition()))
+            );
+
+            // TODO: based on what is sending the message, get its location, or return an error message.
 
             //TODO: via proximity
 
@@ -93,8 +121,10 @@ public class DisableComCommands {
             HashSet<NetworkNode> playerNodes;
             try {
                 // get the nodes in the chunk the player is in, for the channels the user is registered to send to.
-                playerNodes = manager.NodesReceivingInChunk(playerChunk,
-                        manager.getReceivingFromChannelsForPlayer(sender));
+                playerNodes = manager.NodesReceivingInChunk(
+                    SourceChunk,
+                    manager.getReceivingFromChannelsForPlayer(sender)
+                );
             } catch (ChannelMismatch e) {
                 throw new RuntimeException(e);
             }
@@ -103,6 +133,7 @@ public class DisableComCommands {
             for(ServerPlayerEntity player : targets){
                 for(NetworkNode node : playerNodes){
                     manager.directToPlayerMessage(node, player, new Message(sender, getAlias.apply(sender), Text.literal(message)));
+                    // TODO: This method returns a success value. Do we need to use it here?
                 }
             }
 
@@ -114,4 +145,7 @@ public class DisableComCommands {
             return Command.SINGLE_SUCCESS;
         }
     }
+
+    // TODO: write /blast
+
 }
