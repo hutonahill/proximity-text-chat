@@ -4,7 +4,9 @@ import com.google.common.collect.ImmutableList;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import com.proxtextchat.network.soucekeys.MessageSourceKey;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
@@ -19,6 +21,7 @@ import com.proxtextchat.ProxChatBaseMod;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.IntFunction;
+import java.util.stream.Collectors;
 
 /**
  * A network of nodes and tools for passing messages between them.
@@ -30,29 +33,46 @@ public class Channel implements Collection<NetworkNode>{
 
     private final HashMap<ChunkReference, HashSet<NetworkNode>> NodeRangeRegistry = new HashMap<>();
 
-    private final HashSet<PlayerEntity> ReceiveFromPlayerRegistry = new HashSet<>();
+    private final HashSet<MessageSourceKey> ReceiveFromSenderRegistry;
 
-    private final HashSet<PlayerEntity> SendToPlayerRegistry = new HashSet<>();
+    private final HashSet<PlayerReferance> SendToPlayerRegistry;
 
     private Identifier ID = null;
 
     private static final String NodeListKey = "NodeList";
 
+    private static final String ReceiveFromKey ="ReceiveFromSenderRegistry";
+
+    private static final String SendToKey = "SendToPlayerRegistry";
+
     /**
      * provides the necessary logic for translating
      * between in-memory objects and their external representations.
      * See <a href="https://docs.fabricmc.net/1.21/develop/codecs">Fabric Codec Docs</a>.
+     * @param server A minecraft server used to validate players.
+     * @return
      */
-    public static final Codec<Channel> CODEC;
+    public static Codec<Channel> codec(@NotNull MinecraftServer server){
+        Objects.requireNonNull(server, "server");
+        return RecordCodecBuilder.create(instance -> instance.group(
+            NetworkNode.CODEC.listOf().fieldOf(NodeListKey)
+                             .validate(Channel::ValidateNodeList)
+                             .forGetter(Channel::getNodeList),
 
-    static{
-        CODEC = RecordCodecBuilder.create(instance -> instance.group(
-                NetworkNode.CODEC.listOf().fieldOf(NodeListKey).validate(Channel::ValidateNodeList).forGetter(Channel::getNodeList)
-        ).apply(instance, inner-> {
+            MessageSourceKey.CODEC.listOf().fieldOf(ReceiveFromKey)
+                                  .forGetter(key -> new ArrayList<>(key.ReceiveFromSenderRegistry)),
+            PlayerReferance.codec(server).listOf().fieldOf(SendToKey)
+                                 .forGetter(key -> new ArrayList<>(key.SendToPlayerRegistry))
+        ).apply(instance, (nodes, receiveFromSources, sendToPlayers) -> {
             try {
-                return new Channel(inner);
-            } catch (ChannelMismatch e) {
-                throw new RuntimeException(e);
+                return new Channel(
+                    new HashSet<>(nodes),
+                    new HashSet<>(receiveFromSources),
+                    new HashSet<>(sendToPlayers)
+                );
+            }
+            catch (ChannelMismatch exception) {
+                throw new RuntimeException(exception);
             }
         }));
     }
@@ -83,7 +103,7 @@ public class Channel implements Collection<NetworkNode>{
      * @throws ChannelMismatch If any node's channelId's don't match.
      */
     public Channel(Collection<NetworkNode> nodes) throws ChannelMismatch {
-        this(new HashSet<>(nodes));
+        this(new HashSet<>(nodes), new HashSet<>(), new HashSet<>());
     }
 
     /**
@@ -93,9 +113,17 @@ public class Channel implements Collection<NetworkNode>{
      * The nodes are added to the graph and connections are made between them if they share common chunks.
      *
      * @param nodes the set of nodes to be added to the channel.
+     * @param receivesFromSources
+     * @param sendToPlayerRegistry
      * @throws ChannelMismatch if any node does not match the expected channel.
      */
-    public Channel(@NotNull HashSet<NetworkNode> nodes) throws ChannelMismatch {
+    public Channel(
+        @NotNull HashSet<NetworkNode> nodes,
+        @NotNull HashSet<MessageSourceKey>  receivesFromSources,
+        @NotNull HashSet<PlayerReferance> sendToPlayerRegistry
+    ) throws ChannelMismatch {
+        ReceiveFromSenderRegistry = receivesFromSources;
+        SendToPlayerRegistry = sendToPlayerRegistry;
 
         // a registry of nodes that lets us avoid looping though the
         // node set a second time.
@@ -163,6 +191,8 @@ public class Channel implements Collection<NetworkNode>{
 
             }
         }
+
+
     }
 
 
@@ -355,13 +385,13 @@ public class Channel implements Collection<NetworkNode>{
      * @return an ArrayList of nodes representing the shortest path from origin to destination,
      *         or null if no path is found.
      */
-    public ImmutableList<NetworkNode> DirectMessage(@NotNull NetworkNode origin, @NotNull NetworkNode destination){
+    public Optional<ImmutableList<NetworkNode>> DirectMessage(@NotNull NetworkNode origin, @NotNull NetworkNode destination){
 
         if (!ShortestPathRegistry.containsKey(origin)) {
-            return null;
+            return Optional.empty();
         }
 
-        return ShortestPathRegistry.get(origin).get(destination);
+        return Optional.ofNullable(ShortestPathRegistry.get(origin).get(destination));
     }
 
 
@@ -371,10 +401,10 @@ public class Channel implements Collection<NetworkNode>{
      * @return an ArrayList of nodes representing the shortest path from origin to chunk the target player is in,
      *         or null if no path is found.
      */
-    public ImmutableList<NetworkNode> DirectToPlayerMessage(@NotNull NetworkNode origin, @NotNull ServerPlayerEntity target){
+    public Optional<ImmutableList<NetworkNode>> DirectToPlayerMessage(@NotNull NetworkNode origin, @NotNull ServerPlayerEntity target){
         // make sure the target play can receive messages from this channel.
-        if(!SendToPlayerRegistry.contains(target)){
-            return null;
+        if(!SendToPlayerRegistry.contains(PlayerReferance.of(target))){
+            return Optional.empty();
         }
 
         // identify the chunk the target is in.
@@ -383,7 +413,7 @@ public class Channel implements Collection<NetworkNode>{
 
         // Check if this channel has that chunk in its range.
         if(!NodeRangeRegistry.containsKey(targetChunk)) {
-            return null;
+            return Optional.empty();
         }
 
         // check all possible paths.
@@ -391,17 +421,21 @@ public class Channel implements Collection<NetworkNode>{
         int shortestPath = Integer.MAX_VALUE;
 
         for (NetworkNode possibleTarget : NodeRangeRegistry.get(targetChunk)){
-            int possiblePath = DirectMessage(origin, possibleTarget).size();
+            Optional<ImmutableList<NetworkNode>> message = DirectMessage(origin, possibleTarget);
 
-            if(possiblePath < shortestPath){
-                shortestPath = possiblePath;
-                bestTarget = possibleTarget;
+            if(message.isPresent()){
+                int possiblePath = message.get().size();
+
+                if(possiblePath < shortestPath){
+                    shortestPath = possiblePath;
+                    bestTarget = possibleTarget;
+                }
             }
         }
 
         // if best target is null then no path was found to reach the target.
         if(bestTarget == null){
-            return null;
+            return Optional.empty();
         }
 
         return DirectMessage(origin, bestTarget);
@@ -537,21 +571,27 @@ public class Channel implements Collection<NetworkNode>{
         return Collections.unmodifiableMap(NodeReceivingRegistry);
     }
 
-    public @NotNull Set<PlayerEntity> getReceiveFromPlayerRegistry(){
-        return Collections.unmodifiableSet(ReceiveFromPlayerRegistry);
+    public @NotNull Set<MessageSourceKey> getReceiveFromSenderRegistry(){
+        return Collections.unmodifiableSet(ReceiveFromSenderRegistry);
     }
 
-    public @NotNull Set<PlayerEntity> getSendToPlayerRegistry() {
-        return Collections.unmodifiableSet(SendToPlayerRegistry);
+    public @NotNull Set<PlayerEntity> getSendToPlayerRegistry(@NotNull MinecraftServer server) {
+        Objects.requireNonNull(server, "server");
+
+        return SendToPlayerRegistry
+            .stream()
+            .map(reference -> reference.getServerPlayer(server))
+            .flatMap(Optional::stream)
+            .collect(Collectors.toUnmodifiableSet());
     }
 
     /**
-     * Adds a player to the registry of players' Channel will receive messages.
+     * Adds a player to the registry of players' Channel will receive messages from.
      *
      * @param player the player to be added to the receiving registry.
      */
-    public void addReceivingFromPlayer(@NotNull PlayerEntity player){
-        ReceiveFromPlayerRegistry.add(player);
+    public void addReceivingFromPlayer(@NotNull MessageSourceKey player){
+        ReceiveFromSenderRegistry.add(player);
     }
 
     /**
@@ -560,16 +600,16 @@ public class Channel implements Collection<NetworkNode>{
      * @param player the player to be added to the send to registry.
      */
     public void addSendToPlayer(@NotNull PlayerEntity player){
-        SendToPlayerRegistry.add(player);
+        SendToPlayerRegistry.add(PlayerReferance.of(player));
     }
 
     /**
      * Removes a player from the registry of players' Channel will receive messages.
      *
-     * @param player the player to be removed from the receiving registry.
+     * @param source the player to be removed from the receiving registry.
      */
-    public void removeReceivingFromPlayer(@NotNull PlayerEntity player){
-        ReceiveFromPlayerRegistry.remove(player);
+    public void removeReceivingFromSource(@NotNull MessageSourceKey source){
+        ReceiveFromSenderRegistry.remove(source);
     }
 
     /**
@@ -578,17 +618,17 @@ public class Channel implements Collection<NetworkNode>{
      * @param player the player to be removed from the send to registry.
      */
     public void removeSendToPlayer(@NotNull PlayerEntity player){
-        SendToPlayerRegistry.remove(player);
+        SendToPlayerRegistry.remove(PlayerReferance.of(player));
     }
 
     /**
      * Checks if a player is registered to receive messages from a channel.
      *
-     * @param player the player to check.
+     * @param source the player to check.
      * @return true if the player is registered to receive messages, false otherwise.
      */
-    public boolean hasReceivingFromPlayer(@NotNull PlayerEntity player){
-        return ReceiveFromPlayerRegistry.contains(player);
+    public boolean hasReceivingFromSource(@NotNull MessageSourceKey source){
+        return ReceiveFromSenderRegistry.contains(source);
     }
 
     /**
@@ -598,7 +638,7 @@ public class Channel implements Collection<NetworkNode>{
      * @return true if the player is registered to send messages, false otherwise.
      */
     public boolean hasSendToPlayer(@NotNull PlayerEntity player){
-        return SendToPlayerRegistry.contains(player);
+        return SendToPlayerRegistry.contains(PlayerReferance.of(player));
     }
 
 

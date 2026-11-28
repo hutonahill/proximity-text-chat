@@ -1,6 +1,9 @@
 package com.proxtextchat.network.soucekeys;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.entity.Entity;
+import net.minecraft.util.Uuids;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -9,11 +12,18 @@ import java.util.HashMap;
 import java.util.Objects;
 import java.util.UUID;
 
-public final class EntitySourceKey extends MessageSouceKey{
+public final class EntitySourceKey extends MessageSourceKey {
 
-    private final UUID eId;
+    private final @NotNull UUID eId;
 
-    private EntitySourceKey(UUID Id){
+    public static final Codec<EntitySourceKey> CODEC = RecordCodecBuilder.create(
+        instance -> instance.group(
+            Uuids.CODEC.fieldOf("entity_id")
+                 .forGetter(key -> key.eId)
+        ).apply(instance, EntitySourceKey::of)
+    );
+
+    private EntitySourceKey(@NotNull UUID Id){
         eId = Id;
     }
 
@@ -47,7 +57,7 @@ public final class EntitySourceKey extends MessageSouceKey{
     }
 
     @Override
-    protected boolean hasSameIdentity(@Nullable MessageSouceKey key) {
+    protected boolean hasSameIdentity(@Nullable MessageSourceKey key) {
         if (!(key instanceof EntitySourceKey entityKey)) {
             return false;
         }

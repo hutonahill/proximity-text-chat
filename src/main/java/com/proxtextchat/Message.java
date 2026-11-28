@@ -1,7 +1,7 @@
 package com.proxtextchat;
 
 import com.proxtextchat.network.NetworkNode;
-import net.minecraft.entity.Entity;
+import com.proxtextchat.network.soucekeys.MessageSourceKey;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
@@ -13,7 +13,7 @@ import java.util.List;
  * Represents a message sent by an entity with additional metadata, such as alias and a trace.
  */
 public class Message {
-    private final Entity TrueSender;
+    private final MessageSourceKey TrueSender;
 
     private final Text Alias;
 
@@ -30,7 +30,7 @@ public class Message {
      * @param alias the alias to be displayed with the message.
      * @param message the content of the message.
      */
-    public Message(Entity trueSender, Text alias, Text message){
+    public Message(MessageSourceKey trueSender, Text alias, Text message){
         TrueSender = trueSender;
         Alias = alias;
         Message = message;
@@ -39,15 +39,6 @@ public class Message {
         SendTime = Instant.now();
     }
 
-    /**
-     * Constructs a new Message with the given sender and message content, using the sender's name as the alias.
-     *
-     * @param trueSender the entity sending the message.
-     * @param message the content of the message.
-     */
-    Message(Entity trueSender, Text message){
-        this(trueSender, trueSender.getName(), message);
-    }
 
     /**
      * Adds a network node to the trace of the message.
@@ -77,10 +68,14 @@ public class Message {
      * @return the formatted message as a Text object.
      */
     public Text getMessage() {
-        return Text.literal("[" + Alias + "] ").formatted(Formatting.GOLD).append(Message);
+        return Text.literal("[")
+                   .append(Alias)
+                   .append("] ")
+                   .formatted(Formatting.GOLD)
+                   .append(Message);
     }
 
-    public Entity getTrueSender() {
+    public MessageSourceKey getTrueSender() {
         return TrueSender;
     }
 

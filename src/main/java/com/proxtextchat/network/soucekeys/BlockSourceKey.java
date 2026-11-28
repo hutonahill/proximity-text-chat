@@ -1,17 +1,21 @@
 package com.proxtextchat.network.soucekeys;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
+import net.minecraft.world.gen.BlockSource;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
 import java.util.Objects;
 
-public final class BlockSourceKey extends MessageSouceKey{
+public final class BlockSourceKey extends MessageSourceKey {
 
     private final @NotNull BlockPos pos;
 
@@ -19,8 +23,22 @@ public final class BlockSourceKey extends MessageSouceKey{
 
     private final @NotNull Identifier blockType;
 
+    public static final Codec<BlockSourceKey> CODEC = RecordCodecBuilder.create(
+        instance -> instance.group(
+            BlockPos.CODEC.fieldOf("pos")
+                .forGetter(key -> key.pos),
+            RegistryKey.createCodec(RegistryKeys.WORLD)
+                .fieldOf("worldKey")
+                .forGetter(key -> key.worldKey),
+            Identifier.CODEC
+                .fieldOf("block_type")
+                .forGetter(key -> key.blockType)
+        ).apply(instance, BlockSourceKey::of)
+
+    );
+
     private BlockSourceKey(@NotNull BlockPos pos, @NotNull RegistryKey<World> worldKey, @NotNull Identifier blockType){
-        this.pos = pos;
+        this.pos = pos.toImmutable();
         this.worldKey = worldKey;
         this.blockType = blockType;
     }
@@ -42,7 +60,10 @@ public final class BlockSourceKey extends MessageSouceKey{
         return of(block.getPos(), world.getRegistryKey(), blockEntityType);
     }
 
-    public static BlockSourceKey of(@NotNull BlockPos pos, @NotNull RegistryKey<World> worldKey, @NotNull Identifier blockType){
+    public static BlockSourceKey of(
+        @NotNull BlockPos pos, @NotNull RegistryKey<World> worldKey,
+        @NotNull Identifier blockType
+    ){
         Objects.requireNonNull(pos, "pos");
         Objects.requireNonNull(worldKey, "worldKey");
         Objects.requireNonNull(blockType, "blockType");
@@ -78,7 +99,7 @@ public final class BlockSourceKey extends MessageSouceKey{
     }
 
     @Override
-    protected boolean hasSameIdentity(MessageSouceKey key) {
+    protected boolean hasSameIdentity(MessageSourceKey key) {
         if (!(key instanceof BlockSourceKey blockKey)) {
             return false;
         }

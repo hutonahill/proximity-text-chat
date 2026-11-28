@@ -1,5 +1,8 @@
 package com.proxtextchat.network.soucekeys;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.proxtextchat.mixin.ServerCommandSouce.ServerCommandSourceInspection;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.registry.Registries;
@@ -11,7 +14,33 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
 
-public abstract class MessageSouceKey {
+public abstract class MessageSourceKey {
+    public static final Codec<MessageSourceKey> CODEC =
+        PossibleSourceType.CODEC.dispatch(
+            "source_type",
+            MessageSourceKey::getType,
+            MessageSourceKey::getCodec
+        );
+
+    private static MapCodec<? extends MessageSourceKey> getCodec(
+        PossibleSourceType type
+    ) {
+        return switch (type) {
+            case Player ->
+                PlayerSouceKey.CODEC.fieldOf("data");
+            case Entity ->
+                EntitySourceKey.CODEC.fieldOf("data");
+            case Block ->
+                BlockSourceKey.CODEC.fieldOf("data");
+            case ServerConsole ->
+                ConsoleSourceKey.CODEC.fieldOf("data");
+            case UnknownType ->
+                throw new IllegalArgumentException(
+                    "Unknown message source type"
+                );
+        };
+    }
+
     public abstract PossibleSourceType getType();
 
     @Override
@@ -20,7 +49,7 @@ public abstract class MessageSouceKey {
             return true;
         }
 
-        if (!(obj instanceof MessageSouceKey key)) {
+        if (!(obj instanceof MessageSourceKey key)) {
             return false;
         }
 
@@ -30,9 +59,9 @@ public abstract class MessageSouceKey {
     @Override
     public abstract int hashCode();
 
-    protected abstract boolean hasSameIdentity(MessageSouceKey key);
+    protected abstract boolean hasSameIdentity(MessageSourceKey key);
 
-    public static MessageSouceKey of(@NotNull ServerCommandSource source){
+    public static MessageSourceKey of(@NotNull ServerCommandSource source){
         Objects.requireNonNull(source, "source");
 
 

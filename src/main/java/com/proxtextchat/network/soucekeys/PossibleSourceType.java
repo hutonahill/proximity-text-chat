@@ -1,5 +1,7 @@
 package com.proxtextchat.network.soucekeys;
 
+import com.mojang.serialization.Codec;
+
 public enum PossibleSourceType {
     /**
      * Any player
@@ -23,5 +25,11 @@ public enum PossibleSourceType {
     /**
      * anything else.
      */
-    UnknownType
+    UnknownType;
+
+    public static final Codec<PossibleSourceType> CODEC =
+        Codec.STRING.xmap(
+            PossibleSourceType::valueOf,
+            PossibleSourceType::name
+        );
 }

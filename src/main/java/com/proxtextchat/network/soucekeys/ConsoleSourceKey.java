@@ -1,8 +1,15 @@
 package com.proxtextchat.network.soucekeys;
 
+import com.mojang.serialization.Codec;
+
 import java.util.Objects;
 
-public class ConsoleSourceKey extends MessageSouceKey{
+public class ConsoleSourceKey extends MessageSourceKey {
+    public static final ConsoleSourceKey INSTANCE = new ConsoleSourceKey();
+
+    public static final Codec<ConsoleSourceKey> CODEC =
+        Codec.unit(INSTANCE);
+
     @Override
     public PossibleSourceType getType() {
         return PossibleSourceType.ServerConsole;
@@ -14,11 +21,9 @@ public class ConsoleSourceKey extends MessageSouceKey{
     }
 
     @Override
-    protected boolean hasSameIdentity(MessageSouceKey key) {
+    protected boolean hasSameIdentity(MessageSourceKey key) {
         return key == this;
         }
 
     private ConsoleSourceKey(){}
-
-    public static final ConsoleSourceKey INSTANCE = new ConsoleSourceKey();
 }

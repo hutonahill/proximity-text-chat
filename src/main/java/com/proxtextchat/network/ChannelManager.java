@@ -3,7 +3,9 @@ package com.proxtextchat.network;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.proxtextchat.Message;
+import com.proxtextchat.network.soucekeys.MessageSourceKey;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
@@ -26,6 +28,8 @@ public class ChannelManager implements Collection<Channel>{
      */
     public static final ChannelManager Instance = new ChannelManager();
 
+    private @Nullable MinecraftServer Server;
+
 
     private static final HashMap<Identifier, Channel> ChannelRegistry = new HashMap<>();
 
@@ -41,6 +45,24 @@ public class ChannelManager implements Collection<Channel>{
 
 
     private ChannelManager(){}
+
+    public void attachServer(@NotNull MinecraftServer server) {
+        Objects.requireNonNull(server, "server");
+
+        if (this.Server != null && this.Server.equals(server)) {
+            throw new IllegalStateException(
+                "ChannelManager is already attached to a server"
+            );
+        }
+
+        this.Server = server;
+    }
+
+    public void detachServer(MinecraftServer server) {
+        if (Objects.equals(this.Server, server)) {
+            this.Server = null;
+        }
+    }
 
 
     /**
@@ -188,7 +210,7 @@ public class ChannelManager implements Collection<Channel>{
      * @param channel the channel to register the player to.
      * @throws ChannelMismatch if the channel is not registered with the ChannelManager.
      */
-    public void addReceivingFromPlayer(@NotNull PlayerEntity player, @NotNull Identifier channel) throws ChannelMismatch {
+    public void addReceivingFromPlayer(@NotNull MessageSourceKey player, @NotNull Identifier channel) throws ChannelMismatch {
         if(ChannelRegistry.containsKey(channel)){
             Channel graph = ChannelRegistry.get(channel);
 
@@ -219,15 +241,15 @@ public class ChannelManager implements Collection<Channel>{
 
 
     /**
-     * Registers a player to receive messages from a collection of channels.
+        * Registers a sender to send messages to a collection of channels.
      *
-     * @param player the player to register.
-     * @param channels the collection of channels to register the player to.
-     * @throws ChannelMismatch if any channel in the collection is not registered with the ChannelManager.
+         * @param sender the sender to register.
+     * @param channels the collection of channels the player will send messages to.
+        * @throws ChannelMismatch if any channel in the collection is not registered with the ChannelManager.
      */
-    public void addReceivingFromPlayer(@NotNull PlayerEntity player, @NotNull Collection<Identifier> channels) throws ChannelMismatch{
+    public void addReceivingFromSender(@NotNull MessageSourceKey sender, @NotNull Collection<Identifier> channels) throws ChannelMismatch{
         for(Identifier channel : channels){
-            addReceivingFromPlayer(player, channel);
+            addReceivingFromPlayer(sender, channel);
         }
     }
 
@@ -248,11 +270,11 @@ public class ChannelManager implements Collection<Channel>{
     /**
      * Removes a player from receiving messages from all registered channels.
      *
-     * @param player the player to remove.
+     * @param source the player to remove.
      */
-    public void removeReceivingFromPlayerEverywhere(@NotNull PlayerEntity player) {
+    public void removeReceivingFromPlayerEverywhere(@NotNull MessageSourceKey source) {
         for(Identifier channel : ChannelRegistry.keySet()){
-            ChannelRegistry.get(channel).removeReceivingFromPlayer(player);
+            ChannelRegistry.get(channel).removeReceivingFromSource(source);
         }
     }
 
@@ -263,7 +285,7 @@ public class ChannelManager implements Collection<Channel>{
      */
     public void removeSendToPlayerEverywhere(@NotNull PlayerEntity player){
         for(Identifier channel : ChannelRegistry.keySet()){
-            ChannelRegistry.get(channel).removeReceivingFromPlayer(player);
+            ChannelRegistry.get(channel).removeSendToPlayer(player);
         }
     }
 
@@ -271,15 +293,15 @@ public class ChannelManager implements Collection<Channel>{
     /**
      * Removes a player from receiving messages from a specified channel.
      *
-     * @param player the player to remove.
+     * @param source the player to remove.
      * @param channel the channel to remove the player from.
      * @throws ChannelMismatch if the channel is not registered with the ChannelManager.
      */
-    public void removeReceivingFromPlayer(@NotNull PlayerEntity player, @NotNull Identifier channel) throws ChannelMismatch{
+    public void removeReceivingFromPlayer(@NotNull MessageSourceKey source, @NotNull Identifier channel) throws ChannelMismatch{
         if(ChannelRegistry.containsKey(channel)){
             Channel graph = ChannelRegistry.get(channel);
 
-            graph.removeReceivingFromPlayer(player);
+            graph.removeReceivingFromSource(source);
         }
         else{
             throw new ChannelMismatch("No registered channel with that Identifier.");
@@ -308,13 +330,13 @@ public class ChannelManager implements Collection<Channel>{
     /**
      * Removes a player from receiving messages from a collection of channels.
      *
-     * @param player the player to remove.
+     * @param source the player to remove.
      * @param channels the collection of channels to remove the player from.
      * @throws ChannelMismatch if any channel in the collection is not registered with the ChannelManager.
      */
-    public void removeReceivingFromPlayer(@NotNull PlayerEntity player, @NotNull Collection<Identifier> channels)  throws ChannelMismatch{
+    public void removeReceivingFromPlayer(@NotNull MessageSourceKey source, @NotNull Collection<Identifier> channels)  throws ChannelMismatch{
         for(Identifier channel : channels){
-            removeReceivingFromPlayer(player, channel);
+            removeReceivingFromPlayer(source, channel);
         }
     }
 
@@ -333,15 +355,15 @@ public class ChannelManager implements Collection<Channel>{
 
 
     /**
-     * Retrieves the set of channels from which a player is registered to receive messages.
+     * Retrieves the set of channels to which a souce is registered to send messages.
      *
-     * @param player the player whose receiving channels are to be retrieved.
+     * @param source the player whose receiving channels are to be retrieved.
      * @return a set of channel identifiers representing the channels the player is receiving from.
      */
-    public @NotNull HashSet<Identifier> getReceivingFromChannelsForPlayer(@NotNull PlayerEntity player){
+    public @NotNull HashSet<Identifier> getReceivingFromChannelsForSource(@NotNull MessageSourceKey source){
         HashSet<Identifier> output = new HashSet<>();
         for(Identifier channel : ChannelRegistry.keySet()){
-            if(ChannelRegistry.get(channel).hasReceivingFromPlayer(player)){
+            if(ChannelRegistry.get(channel).hasReceivingFromSource(source)){
                 output.add(channel);
             }
         }
@@ -441,10 +463,10 @@ public class ChannelManager implements Collection<Channel>{
             throw new IllegalArgumentException("destination node not found.");
         }
 
-        @Nullable ImmutableList<NetworkNode> path = graph.DirectMessage(source, destination);
+        Optional<ImmutableList<NetworkNode>> path = graph.DirectMessage(source, destination);
         
-        if(path != null){
-            message.AddTrace(path);
+        if(path.isPresent()){
+            message.AddTrace(path.get());
 
             TriggerNodeMessage(destination, message);
             
@@ -465,7 +487,9 @@ public class ChannelManager implements Collection<Channel>{
      *         {@code false} if no valid path exists between the nodes.
      * @throws IllegalArgumentException if the source node's channel is not registered with the ChannelManager.
      */
-    public boolean directToPlayerMessage(@NotNull NetworkNode source, @NotNull ServerPlayerEntity target, @NotNull Message message){
+    public boolean directToPlayerMessage(
+        @NotNull NetworkNode source, @NotNull ServerPlayerEntity target, @NotNull Message message
+    ){
 
         if(!ChannelRegistry.containsKey(source.getChannelId())){
             throw new IllegalArgumentException("Channel not registered.");
@@ -477,15 +501,15 @@ public class ChannelManager implements Collection<Channel>{
             throw new IllegalArgumentException("source node not found.");
         }
 
-        @Nullable ImmutableList<NetworkNode> path = graph.DirectToPlayerMessage(source,target);
+        Optional<ImmutableList<NetworkNode>> path = graph.DirectToPlayerMessage(source,target);
 
-        if(path == null){
+        if(path.isEmpty()){
             return false;
         }
 
-        message.AddTrace(path);
+        message.AddTrace(path.get());
 
-        TriggerNodeMessage(path.getLast(), message);
+        target.sendMessage(message.getMessage());
 
         return true;
 
@@ -514,7 +538,7 @@ public class ChannelManager implements Collection<Channel>{
 
         // we send a message to each node the source is connected to.
         for (NetworkNode destination : paths.keySet()){
-            Message newMessage = new Message(message.getTrueSender(), message.getAlias(), message.getMessage());
+            Message newMessage = new Message(message.getTrueSender(), message.getAlias(), message.getMessageContent());
 
             newMessage.AddTrace(paths.get(destination));
 
@@ -531,7 +555,7 @@ public class ChannelManager implements Collection<Channel>{
         }
 
         // now deliver the messages to players
-        Set<PlayerEntity> registeredPlayers = ChannelRegistry.get(node.getChannelId()).getSendToPlayerRegistry();
+        Set<PlayerEntity> registeredPlayers = ChannelRegistry.get(node.getChannelId()).getSendToPlayerRegistry(Server);
 
         for(PlayerEntity player : registeredPlayers){
             // filter out offline players

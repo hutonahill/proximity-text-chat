@@ -8,6 +8,9 @@ import com.proxtextchat.PlayerChatRageMethodCommand.PlayerChatRangeDefinition;
 import com.proxtextchat.PlayerChatRageMethodCommand.PlayerChatRangeMethodCommandSuggestionProvider;
 import com.proxtextchat.PlayerChatRageMethodCommand.StandardPlayerChatRangeMethod;
 import com.proxtextchat.network.*;
+import com.proxtextchat.network.soucekeys.ConsoleSourceKey;
+import com.proxtextchat.network.soucekeys.MessageSourceKey;
+import com.proxtextchat.network.soucekeys.PlayerSouceKey;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -44,7 +47,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 import static net.minecraft.server.command.CommandManager.argument;
 
@@ -63,7 +65,13 @@ public class ProxChatBaseMod implements ModInitializer {
      * </p>
      */
     @SuppressWarnings("CanBeFinal") // This is exposed as public and not final so other mods can modify
-    public static Function<ServerPlayerEntity, Text> getAlias = ProxChatBaseMod::AliasIsName;
+    public static AliasResolver getAlias = (source, sourceKey) -> {
+        if (sourceKey instanceof ConsoleSourceKey) {
+            return Text.literal("⟦Server Console⟧");
+        }
+
+        return source.getDisplayName();
+    };
 
     /**
      * A unique name for teh mod.
@@ -140,20 +148,21 @@ public class ProxChatBaseMod implements ModInitializer {
         boolean isProximityChatEnabled = server.getGameRules().get(ENABLE_PROXIMITY_TEXT_CHAT).get();
 
         if(isProximityChatEnabled){
-
-
             // Player to Network chat
             HashSet<NetworkNode> playerNodes;
+            MessageSourceKey senderKey = PlayerSouceKey.of(sender);
             try {
                 // get the nodes in the chunk the player is in, for the channels he user is registered to send to.
                 playerNodes = manager.NodesReceivingInChunk(playerChunk,
-                        manager.getReceivingFromChannelsForPlayer(sender));
+                        manager.getReceivingFromChannelsForSource(senderKey));
             } catch (ChannelMismatch e) {
                 throw new RuntimeException(e);
             }
+            MessageSourceKey sourceKey = PlayerSouceKey.of(sender);
+            ServerCommandSource commandSource = sender.getCommandSource();
 
             for(NetworkNode node : playerNodes){
-                manager.broadcastMessage(node, new Message(sender, message.getContent()));
+                manager.broadcastMessage(node, new Message(sourceKey, getAlias.resolve(commandSource, sourceKey), message.getContent()));
             }
 
             int PlayerChatRange = server.getGameRules().get(PLAYER_TO_PLAYER_CHAT_RANGE).get();
@@ -162,7 +171,7 @@ public class ProxChatBaseMod implements ModInitializer {
             //Player to Player chat
             Set<PlayerEntity> playersInRage = ChatRangeRegistry.Run(sender, PlayerChatRange);
 
-            Message fomattedMessage = new Message(sender, getAlias.apply(sender), message.getContent());
+            Message fomattedMessage = new Message(sourceKey, getAlias.resolve(commandSource, sourceKey), message.getContent());
 
             for(PlayerEntity receivingPlayer : playersInRage){
 
@@ -177,6 +186,13 @@ public class ProxChatBaseMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
+
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+            ChannelManager.Instance.attachServer(server);
+            LoadChannelData(server);
+        });
+
+        ServerLifecycleEvents.SERVER_STOPPED.register(ChannelManager.Instance::detachServer);
 
         ChatRangeRegistry.registerMethod(ChatMethod.getID(), ChatMethod);
 
@@ -195,7 +211,6 @@ public class ProxChatBaseMod implements ModInitializer {
             dispatcher.getRoot().addChild(PlayerChatRangeMethodNode);
         });
 
-        ServerLifecycleEvents.SERVER_STARTED.register(ProxChatBaseMod::LoadChannelData);
         ServerLifecycleEvents.BEFORE_SAVE.register(ProxChatBaseMod::SaveChannelData);
 
         // triggered every time a player sends a message. If the method returns false server will not deliver message.
@@ -329,7 +344,7 @@ public class ProxChatBaseMod implements ModInitializer {
 
 
 
-            DataResult<List<Channel>> dataResult = Channel.CODEC.listOf().parse(NbtOps.INSTANCE, loadedElement);
+            DataResult<List<Channel>> dataResult = Channel.codec(server).listOf().parse(NbtOps.INSTANCE, loadedElement);
             channelList = dataResult.resultOrPartial(LOGGER::error).orElseThrow();
 
         } else {
@@ -372,7 +387,7 @@ public class ProxChatBaseMod implements ModInitializer {
 
     private static void SaveChannelData(MinecraftServer server, boolean flush, boolean force){
         // Encode data to NbtElement
-        DataResult<NbtElement> saveDataResult = Channel.CODEC.listOf().encodeStart(NbtOps.INSTANCE,
+        DataResult<NbtElement> saveDataResult = Channel.codec(server).listOf().encodeStart(NbtOps.INSTANCE,
                 new ArrayList<>(ChannelManager.Instance.getChannelSet()));
 
         NbtElement saveDataElement = saveDataResult.resultOrPartial(LOGGER::error).orElseThrow();
@@ -461,13 +476,5 @@ public class ProxChatBaseMod implements ModInitializer {
         return Identifier.of(MOD_ID, path);
     }
 
-    /**
-     * Default method for determining alias. Returns the player's name.
-     * @param player The Player you want ot get the alias of
-     * @return the alias of the target player
-     */
-    public static Text AliasIsName(ServerPlayerEntity player){
-        return player.getName();
-    }
-
 }
+

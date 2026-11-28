@@ -10,6 +10,7 @@ import com.proxtextchat.network.ChannelManager;
 import com.proxtextchat.network.ChannelMismatch;
 import com.proxtextchat.network.ChunkReference;
 import com.proxtextchat.network.NetworkNode;
+import com.proxtextchat.network.soucekeys.MessageSourceKey;
 import net.minecraft.command.argument.EntityArgumentType;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.CommandManager;
@@ -84,7 +85,8 @@ public class DisableComCommands {
         if(server == null){
             context.getSource().sendFeedback(
                     () -> Text.literal("Cannot find server").formatted(Formatting.RED),
-                    false);
+                    false
+            );
             return 0;
         }
 
@@ -123,7 +125,7 @@ public class DisableComCommands {
                 // get the nodes in the chunk the player is in, for the channels the user is registered to send to.
                 playerNodes = manager.NodesReceivingInChunk(
                     SourceChunk,
-                    manager.getReceivingFromChannelsForPlayer(sender)
+                    manager.getReceivingFromChannelsForSource(sender)
                 );
             } catch (ChannelMismatch e) {
                 throw new RuntimeException(e);
@@ -132,7 +134,11 @@ public class DisableComCommands {
 
             for(ServerPlayerEntity player : targets){
                 for(NetworkNode node : playerNodes){
-                    manager.directToPlayerMessage(node, player, new Message(sender, getAlias.apply(sender), Text.literal(message)));
+
+                    MessageSourceKey sourceKey = MessageSourceKey.of(sender);
+                    manager.directToPlayerMessage( // TODO: we should use this return value to validate. somehow.
+                        node, player, new Message(sourceKey, getAlias.resolve(sender, sourceKey), Text.literal(message))
+                    );
                     // TODO: This method returns a success value. Do we need to use it here?
                 }
             }
