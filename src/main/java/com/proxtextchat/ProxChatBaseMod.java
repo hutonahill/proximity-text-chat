@@ -36,16 +36,16 @@ import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.GameRules;
 import net.minecraft.world.chunk.Chunk;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.nio.file.StandardCopyOption;
+import java.util.*;
 import java.util.function.Consumer;
 
 import static net.minecraft.server.command.CommandManager.argument;
@@ -189,6 +189,7 @@ public class ProxChatBaseMod implements ModInitializer {
 
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             ChannelManager.Instance.attachServer(server);
+            PlayerReferance.clearRegistry();
             LoadChannelData(server);
         });
 
@@ -255,7 +256,7 @@ public class ProxChatBaseMod implements ModInitializer {
         return newPath;
     }
 
-    private static void saveCorruptedFileCopy(Path current) {
+    private static @Nullable Path saveCorruptedFile(Path current) {
         try {
             if (!Files.exists(current)) {
                 throw new IllegalArgumentException("File does not exist: " + current);
@@ -269,9 +270,13 @@ public class ProxChatBaseMod implements ModInitializer {
 
             // Move the original file to the corrupted filename
             Files.move(current, uniqueTaggedPath);
+
+            return uniqueTaggedPath;
         } catch (IOException e) {
             LOGGER.error("Failed to copy corrupted file", e);
         }
+
+        return null;
     }
 
     private static void LoadChannelData(MinecraftServer server){
@@ -322,18 +327,20 @@ public class ProxChatBaseMod implements ModInitializer {
                     LOGGER.warn("Successfully recovered channel data by reading it uncompressed channel data.");
                 }
                 catch (IOException eTwo){
-                    saveCorruptedFileCopy(savePath);
+                    Path newCorruptPath = saveCorruptedFile(savePath);
 
-                    LOGGER.error("Failed to recover by reading uncompressed. " +
-                            "Saved a copy of the corrupted file in the same directory and reset out the original corrupted file. " +
-                            "All channels gave been lost.", eTwo);
+                    LOGGER.error(
+                        "Failed to read channel data. The corrupted file was preserved at '{}'. " +
+                            "All channels have been lost.",
+                        newCorruptPath,
+                        eTwo
+                    );
                     for (Consumer<ChannelDataLossContext> handler : recoveryHandlers){
-                        handler.accept(new ChannelDataLossContext(server, savePath, eTwo));
+                        handler.accept(new ChannelDataLossContext(server, newCorruptPath, eTwo));
                     }
                     return;
                 }
             }
-
 
             NbtElement loadedElement = new NbtCompound();
             if(loadedData != null){
@@ -342,10 +349,35 @@ public class ProxChatBaseMod implements ModInitializer {
                 }
             }
 
-
-
             DataResult<List<Channel>> dataResult = Channel.codec(server).listOf().parse(NbtOps.INSTANCE, loadedElement);
-            channelList = dataResult.resultOrPartial(LOGGER::error).orElseThrow();
+            if(dataResult.error().isPresent()){
+                Path newCorruptPath = saveCorruptedFile(savePath);
+
+                String details = dataResult.error().orElseThrow().message();
+
+                String message = (
+                    "Channel data at '%s' was readable as NBT data but failed validation. " +
+                        "The corrupted file has been preserved at %s. Details: %s"
+                ).formatted(savePath, newCorruptPath, details);
+
+                Exception cause = new IllegalArgumentException(message);
+
+                LOGGER.error(message, cause);
+
+
+
+                for (Consumer<ChannelDataLossContext> handler : recoveryHandlers) {
+                    handler.accept(
+                        new ChannelDataLossContext(server, newCorruptPath, cause)
+                    );
+                }
+
+                return;
+            }
+            else{
+                channelList = dataResult.resultOrPartial(LOGGER::error).orElseThrow();
+            }
+
 
         } else {
             return;
@@ -356,13 +388,13 @@ public class ProxChatBaseMod implements ModInitializer {
     /**
      * A context for anyone else who wants to deal with corrupted network data :)
      * @param server The server that owns the data that was unreadable
-     * @param dataPath The path to the file with the unreadable data.
+     * @param dataPath The path to the file with the unreadable data. Or if the file was not able to be saved, null.
      * @param cause The reason the data could not be read.
      */
     public record ChannelDataLossContext(
-            MinecraftServer server,
-            Path dataPath,
-            IOException cause
+            @NotNull MinecraftServer server,
+            @Nullable Path dataPath,
+            @NotNull Exception cause
     ) {}
 
     private static final HashSet<Consumer<ChannelDataLossContext>> recoveryHandlers = new HashSet<>();
@@ -390,15 +422,33 @@ public class ProxChatBaseMod implements ModInitializer {
         DataResult<NbtElement> saveDataResult = Channel.codec(server).listOf().encodeStart(NbtOps.INSTANCE,
                 new ArrayList<>(ChannelManager.Instance.getChannelSet()));
 
-        NbtElement saveDataElement = saveDataResult.resultOrPartial(LOGGER::error).orElseThrow();
+        if(saveDataResult.error().isPresent()){
+            String details = saveDataResult.error().orElseThrow().message();
 
-        NbtCompound nbt;
-        if (saveDataElement instanceof NbtCompound compound) {
-            nbt = compound;
-        } else {
-            nbt = new NbtCompound();
-            nbt.put("data",saveDataElement);
+            LOGGER.error(
+                "Failed to encode channel data. The existing save file was not " +
+                    "overwritten. Details: {}",
+                details
+            );
+
+            return;
         }
+
+        Optional<NbtElement> optionalElement = saveDataResult.result();
+
+        if (optionalElement.isEmpty()) {
+            LOGGER.error(
+                "Failed to encode channel data: the codec returned neither data nor an error. " +
+                    "The existing save file was not overwritten."
+            );
+
+            return;
+        }
+
+        NbtElement saveDataElement = optionalElement.get();
+
+        NbtCompound nbt = new NbtCompound();
+        nbt.put("data",saveDataElement);
 
         Path savePath = server.getSavePath(WorldSavePath.ROOT)
                 .resolve(ModFolder)
@@ -406,9 +456,42 @@ public class ProxChatBaseMod implements ModInitializer {
                 .resolve(ChannelManager.ChannelFile);
 
 
+
+
         try {
+            // make sure the directory exists
             Files.createDirectories(savePath.getParent());
-            NbtIo.writeCompressed(nbt, savePath);  // Writing the NbtCompound to the file
+
+            // Create a temporary file to write to so we don't corrupt good data if save is interrupted.
+            Path atomicSavePath = Files.createTempFile(
+                savePath.getParent(),
+                savePath.getFileName().toString(),
+                ".tmp"
+            );
+
+            // Save data to the temporary file.
+
+            try{
+                NbtIo.writeCompressed(nbt, atomicSavePath);
+
+                // Move that file to overwrite the right normal save file as quickly as possible.
+                Files.move(
+                    atomicSavePath,
+                    savePath,
+                    StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.REPLACE_EXISTING
+                );
+            } finally {
+                try {
+                    Files.deleteIfExists(atomicSavePath);
+                } catch (IOException cleanupException) {
+                    LOGGER.warn(
+                        "Failed to remove temporary channel data file '{}'.",
+                        atomicSavePath,
+                        cleanupException
+                    );
+                }
+            }
         } catch (IOException e) {
             LOGGER.error("Failed to save channel data", e);
         }

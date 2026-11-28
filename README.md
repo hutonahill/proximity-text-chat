@@ -25,33 +25,26 @@ This mod is not a full implementation of the linked design document, but the fou
 
 ## ToDo List:
 
-### Minimum Viable Product
-- Not Done! Scaffolded out, but there are a lot of errors I am still fixing. 
+### Phase One: Minimum Viable Product
+- Theoretically nodes transmit messages from sources with names.
+- Add documentation explaining how to use this stuff. Probably here, not in world. 
 
-### Phase Two
-- Add commands:
-  - `/AddNode <channelIdentifier> <setOfReceaveChunks> <setOfRangeChunks>` 
-    - Returns node ID
-  - `/RemoveNode <Id> <optionalChannelIdentifier>`
-    - Removes a node
-  - `/DirectMessage <sourceNodeId> <destinationNodeId> <quotedMessageContent> <optionalAlius>`
-    - Sends a message from one node to another
-  - `/BraoudcastMessage <sourceNodeId> <quotedMessageContent> <optionalAlius>`
-    - Sends a message to all nodes connected to the source node.
-  - `/GetNodeList <optionalChannelIdentifier>` 
-    - Returns a list of nodes and the chunks they cover, optionally restricted to a channel.
-- Implement threading for populating the shortest path registries.
-- Add documentation explaining how to use this stuff.
+Currently ironing out the last of the bugs for this phase we hope. We hope.
+
+### Phase Two: Testing
+- Add tools for creating networks and testing them.
+- Create a world for building unit tests. maybe build a few unit tests. If you wanna make a unit test hit me up.
+
 
 ### Possible Additional Features
-- Item Tags:
-  - sendInCurios
-  - receiveInCurios
-- Add compatibility with proximity voice chat mod.
-- Some way to visually see the chunks within a node.
-- Support for Xero's World Map and viewing node channel ranges
-- Support for Journey Map and viewing node channel ranges
+- item tags that register you with channels based on where they are in your inventory/hotbar, hand, not your inventory, etc.
 
+- Other mod support:
+  - Curios
+  - Proximity Voice Chat
+    - Some way to visually see the chunks within a node.
+      - Xaero's
+      - Journey Map
 
 ## Documentation
 This mod adds a system of networks with nodes (channels). A node is composed of a set of `CunkReferanc`s 

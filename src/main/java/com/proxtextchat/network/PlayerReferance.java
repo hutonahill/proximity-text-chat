@@ -81,9 +81,18 @@ public class PlayerReferance {
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(server, "server");
 
+
+
         if(registry.containsKey(id)){
+
+           if(!hasJoined(server, id)){
+               throw new IllegalStateException("Cached PlayerReferance does not belong to the supplied server.");
+           }
+
             return registry.get(id);
         }
+
+
 
         PlayerReferance newRef = new PlayerReferance(id, name, server);
         registry.put(id, newRef);
@@ -108,7 +117,11 @@ public class PlayerReferance {
         username = name;
     }
 
-    private static HashMap<UUID, PlayerReferance> registry = new HashMap<>();
+    private static final HashMap<UUID, PlayerReferance> registry = new HashMap<>();
+
+    public static void clearRegistry(){
+        registry.clear();
+    }
 
     public static boolean hasJoined(@NotNull MinecraftServer server, @NotNull UUID uuid) {
         Objects.requireNonNull(server, "server");

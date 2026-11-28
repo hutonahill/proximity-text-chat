@@ -49,7 +49,12 @@ public class ChannelManager implements Collection<Channel>{
     public void attachServer(@NotNull MinecraftServer server) {
         Objects.requireNonNull(server, "server");
 
-        if (this.Server != null && this.Server.equals(server)) {
+
+        if (this.Server != null) {
+            if(this.Server.equals(server)){
+                return;
+            }
+
             throw new IllegalStateException(
                 "ChannelManager is already attached to a server"
             );
