@@ -15,7 +15,7 @@ that will allow players to add infrastructure to extend the range of their chats
 We want to allow for the creation of systems that feel like you're using regular
 Minecraft chat, after you do the work to set it up.
 
-The reason I am developing this mod is I would like to see it used by the 
+The reason I am developing this mod is that I would like to see it used by the 
 [Galaxies: Parzis Star Wars Mod](https://github.com/Parzivail-Modding-Team/GalaxiesParzisStarWarsMod) project (PSWG).
 I've written an outline of how I would use the features of this mod 
 [here](https://docs.google.com/document/d/1DOEGuOlV2-_HNYUSr-h-6xP6oomEu9QLp1_bEtZ9RXU/edit?tab=t.0#heading=h.btip04f205p3).
@@ -26,20 +26,20 @@ This mod is not a full implementation of the linked design document, but the fou
 ## ToDo List:
 
 ### Minimum Viable Product
-- Done!
+- Not Done! Scaffolded out, but there are a lot of errors I am still fixing. 
 
 ### Phase Two
 - Add commands:
   - `/AddNode <channelIdentifier> <setOfReceaveChunks> <setOfRangeChunks>` 
     - Returns node ID
   - `/RemoveNode <Id> <optionalChannelIdentifier>`
-    - removes a node
+    - Removes a node
   - `/DirectMessage <sourceNodeId> <destinationNodeId> <quotedMessageContent> <optionalAlius>`
     - Sends a message from one node to another
   - `/BraoudcastMessage <sourceNodeId> <quotedMessageContent> <optionalAlius>`
-    - sends a message to all nodes connected to the source node.
+    - Sends a message to all nodes connected to the source node.
   - `/GetNodeList <optionalChannelIdentifier>` 
-    - returns a list of nodes and the chunks they cover, optionally restricted to a channel.
+    - Returns a list of nodes and the chunks they cover, optionally restricted to a channel.
 - Implement threading for populating the shortest path registries.
 - Add documentation explaining how to use this stuff.
 
@@ -47,38 +47,38 @@ This mod is not a full implementation of the linked design document, but the fou
 - Item Tags:
   - sendInCurios
   - receiveInCurios
-- Add compatability with proximity voice chat mod.
-- Some way to Visually see the chunks within a node.
+- Add compatibility with proximity voice chat mod.
+- Some way to visually see the chunks within a node.
 - Support for Xero's World Map and viewing node channel ranges
 - Support for Journey Map and viewing node channel ranges
 
 
 ## Documentation
-This mod adds a system of networks with nodes (channels) A node is composed of a set of `CunkReferanc`s 
+This mod adds a system of networks with nodes (channels). A node is composed of a set of `CunkReferanc`s 
 which it can send messages to and a set of `CunkReferanc`s it can receive messages from. 
-This creates a network you can send messages though using methods in `ChannelManager`. 
-Messages contain the text of the message the actual sending entity, an alias for that entity and 
+This creates a network you can send messages through using methods in `ChannelManager`. 
+Messages contain the text of the message, the actual sending entity, an alias for that entity, and 
 the path the message took to get to its destination.
 
 ### Server Chat overwrite
-In order to close loopholes this mod overwrites the normal chat and its accompanying commands (/w, /msg, /say, etc.). When serverwide chat is enabled these systems/commands act just like normal, However, when serverwide chat is disabled. these commands will only work with players within range. Additionally command sources (such as the server console) that don't have a meaningful location will not be able to use the old commands. This will affect datapacks and the console. You can work around this by using `/exicute at` just using a new command I plan on implementing, `/blast`
+In order to close loopholes, this mod overwrites the normal chat and its accompanying commands (/w, /msg, /say, etc.). When serverwide chat is enabled, these systems/commands act just like normal. However, when serverwide chat is disabled. these commands will only work with players within range. Additionally, command sources (such as the server console) that don't have a meaningful location will not be able to use the old commands. This will affect datapacks and the console. You can work around this by using `/exicute at` or a new command I plan on implementing, `/blast`
 
 This section will be rewritten as the mod gets closer to completion.
 
 ### Developer Note:
-This mod contains a mixin for `ServerCommandSource.` It attempts to identify the source of a command and determine weather that source has a meaningful location. if you're a developer, and you add a new command source, and you want to ensure compatability with this mod your going to have to modify this mixing to include your source in this test. At time of writing you can find this test at [ServerCommandSource](src/main/java/com/proxtextchat/mixin/ServerCommandSourceAccessor.java:63)
+This mod contains a mixin for `ServerCommandSource.` It attempts to identify the source of a command and determine whether that source has a meaningful location. If you're a developer and you add a new command source, and you want to ensure compatibility with this mod, you're going to have to modify this mixin to include your source in this test. At the time of writing, you can find the start of this test at [ServerCommandSource:103](src/main/java/com/proxtextchat/mixin/ServerCommandSourceAccessor.java:103)
 
-Based on my vast knowledge of mixins (/s) ive opted to make this one as unfriendly as possible in the hopes it will fail loudly when something is wrong. I suspect not very many people are modifying `ServerCommandSouce`, so i should be fine. 
+Based on my vast knowledge of mixins (/s), I've opted to make this one as unfriendly as possible in the hopes it will fail loudly when something is wrong. I suspect not very many people are modifying `ServerCommandSouce`, so I should be fine. 
 
 ## Versioning
-The version number of this mod `<minecraft_version>-<mod_version>`. 
-`mod_version` will continue to iterate independent of `minecraft_version`
+The version number of this mod is `<minecraft_version>-<mod_version>`. 
+`mod_version` will continue to iterate independently of `minecraft_version`
 
 ## Testing
 Wow, I really hate coming up with tests.
-I'm having included any tests here,
+I'm not including any tests here,
 but I am definitely willing to include them so long as I don't have to come up with them.
-If you have an idea for a test open an issue and if I think it's valid, I will include it.
+If you have an idea for a test, open an issue, and if I think it's valid, I will include it.
 The proposal should include inputs and expected outputs.
 
 ## License
